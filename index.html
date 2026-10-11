@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>리듬 탁구</title>
+<style>
+  :root { --bg:#0b1020; --panel:rgba(12,18,38,.92); --acc:#ffb020; --acc2:#39c5ff; --txt:#f3f6ff; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--txt); font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif; touch-action:none; user-select:none; -webkit-user-select:none; }
+  #gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
+  .hidden { display:none !important; }
+  .screen { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(5,8,20,.55); backdrop-filter:blur(4px); z-index:20; padding:12px; }
+  .panel { background:var(--panel); border:1px solid rgba(255,255,255,.12); border-radius:18px; padding:22px 26px; max-width:720px; width:100%; max-height:94vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  h1 { margin:0 0 6px; font-size:40px; letter-spacing:-1px; background:linear-gradient(90deg,var(--acc),#ff5e7e,var(--acc2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  h2 { margin:0 0 14px; font-size:22px; }
+  p.sub { opacity:.75; margin:0 0 18px; }
+  button { font:inherit; cursor:pointer; border:none; border-radius:12px; padding:12px 18px; background:#1d2a4d; color:var(--txt); transition:transform .08s, background .15s; font-size:16px; }
+  button:hover { background:#27396a; } button:active { transform:scale(.96); }
+  button.primary { background:linear-gradient(135deg,var(--acc),#ff7a3d); color:#1a1200; font-weight:700; }
+  button.ghost { background:transparent; border:1px solid rgba(255,255,255,.25); }
+  button:disabled { opacity:.45; cursor:default; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:8px 0; }
+  .col { display:flex; flex-direction:column; gap:8px; }
+  label.f { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:14px; background:rgba(255,255,255,.05); padding:8px 10px; border-radius:10px; }
+  label.f input[type=text] { width:150px; font:inherit; padding:6px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:#0c1328; color:#fff; }
+  label.f input[type=color] { width:44px; height:30px; border:none; background:none; padding:0; }
+  label.f select, label.f input[type=range] { font:inherit; }
+  select { background:#0c1328; color:#fff; border-radius:8px; padding:6px; border:1px solid rgba(255,255,255,.2); }
+  #custWrap { display:grid; grid-template-columns:260px 1fr; gap:18px; }
+  #prev { width:260px; height:300px; border-radius:14px; background:radial-gradient(circle at 50% 30%, #1c2b55, #070a16); cursor:grab; }
+  @media (max-width:640px){ #custWrap { grid-template-columns:1fr; } #prev { width:100%; height:220px; } h1 { font-size:30px; } }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .card { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:14px; cursor:pointer; text-align:left; }
+  .card:hover { background:rgba(255,255,255,.12); } .card .ic { font-size:30px; } .card b { display:block; margin:6px 0 2px; } .card small { opacity:.7; font-size:12px; line-height:1.4; display:block; }
+  .code { font-size:34px; letter-spacing:8px; font-weight:800; background:#0c1328; padding:10px 16px; border-radius:12px; display:inline-block; }
+  input.code-in { font:inherit; font-size:24px; letter-spacing:6px; width:200px; text-align:center; padding:8px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:#0c1328; color:#fff; }
+  #hud { position:fixed; inset:0; pointer-events:none; z-index:10; }
+  #hud button { pointer-events:auto; }
+  #score { position:absolute; top:10px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:12px; background:rgba(5,8,20,.7); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:6px 14px; font-weight:700; }
+  #score .pl { display:flex; align-items:center; gap:8px; } #score .pt { font-size:26px; min-width:28px; text-align:center; color:var(--acc); } #score .nm { font-size:14px; max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #score .serve { opacity:0; font-size:14px; } #score .serve.on { opacity:1; }
+  #score .vs { opacity:.5; font-size:12px; }
+  #ping { position:absolute; top:12px; left:12px; font-size:12px; opacity:.7; background:rgba(0,0,0,.4); padding:4px 8px; border-radius:8px; }
+  #topBtns { position:absolute; top:10px; right:10px; display:flex; gap:6px; } #topBtns button { padding:8px 10px; font-size:16px; background:rgba(5,8,20,.7); }
+  #judge { position:absolute; left:50%; top:38%; transform:translate(-50%,-50%); font-size:44px; font-weight:900; opacity:0; text-shadow:0 4px 18px rgba(0,0,0,.6); white-space:nowrap; }
+  #judge.pop { animation:pop .7s ease-out forwards; }
+  @keyframes pop { 0%{opacity:0; transform:translate(-50%,-50%) scale(.5);} 15%{opacity:1; transform:translate(-50%,-50%) scale(1.15);} 70%{opacity:1; transform:translate(-50%,-60%) scale(1);} 100%{opacity:0; transform:translate(-50%,-80%) scale(1);} }
+  #combo { position:absolute; left:50%; top:64px; transform:translateX(-50%); font-size:18px; font-weight:700; color:#fff; opacity:.9; text-shadow:0 2px 8px rgba(0,0,0,.6); white-space:nowrap; }
+  #msg { position:absolute; left:50%; top:26%; transform:translateX(-50%); font-size:28px; font-weight:800; text-align:center; text-shadow:0 2px 12px #000; white-space:nowrap; }
+  #hint { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); font-size:13px; opacity:.7; background:rgba(0,0,0,.4); padding:6px 12px; border-radius:10px; text-align:center; }
+  .bubble { position:absolute; background:#fff; color:#111; border-radius:14px; padding:8px 12px; font-size:14px; font-weight:600; max-width:220px; transform:translate(-50%,-110%); box-shadow:0 6px 20px rgba(0,0,0,.4); }
+  .bubble:after { content:""; position:absolute; left:50%; bottom:-8px; margin-left:-8px; border:8px solid transparent; border-top-color:#fff; border-bottom:0; }
+  #emotes { position:absolute; right:10px; bottom:14px; display:flex; gap:6px; } #emotes button { font-size:20px; padding:8px 10px; background:rgba(5,8,20,.7); }
+  #rhythm { position:fixed; inset:0; pointer-events:none; z-index:9; }
+  #target { position:absolute; width:78px; height:78px; border-radius:50%; border:4px solid #fff; box-shadow:0 0 14px rgba(255,255,255,.6), inset 0 0 10px rgba(255,255,255,.3); transform:translate(-50%,-50%); }
+  #approach { position:absolute; width:78px; height:78px; border-radius:50%; border:3px solid var(--acc); box-shadow:0 0 12px rgba(255,176,32,.6); transform:translate(-50%,-50%); }
+  #target.serve { border-color:#9df; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; margin:10px 0 16px; }
+  .stat { background:rgba(255,255,255,.06); border-radius:10px; padding:10px; text-align:center; } .stat b { display:block; font-size:22px; } .stat small { opacity:.7; font-size:12px; }
+  .P{color:#4da3ff} .G{color:#4cd964} .O{color:#ffd54a} .M{color:#f66}
+  #notice .panel { text-align:center; }
+  .tut li { margin:6px 0; line-height:1.5; }
+  .arrow { display:inline-block; width:22px; text-align:center; font-weight:900; }
+  #diffCards { grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); }
+  #practiceInfo { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:rgba(5,8,20,.7); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:8px 14px; font-weight:700; font-size:15px; white-space:nowrap; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="score">
+    <div class="pl"><span class="serve" id="srvMe">🏓</span><span class="nm" id="nmMe">나</span><span class="pt" id="ptMe">0</span></div>
+    <div class="vs">VS</div>
+    <div class="pl"><span class="pt" id="ptOp">0</span><span class="nm" id="nmOp">상대</span><span class="serve" id="srvOp">🏓</span></div>
+  </div>
+  <div id="practiceInfo" class="hidden"></div>
+  <div id="ping" class="hidden">ping --</div>
+  <div id="topBtns"><button id="btnPracticeSet" class="hidden" title="연습 설정">🎛</button><button id="btnPause" title="일시정지">⏸</button><button id="btnSettings" title="설정">⚙</button><button id="btnMute" title="음소거">🔊</button></div>
+  <div id="judge"></div>
+  <div id="combo"></div>
+  <div id="msg"></div>
+  <div id="hint"></div>
+  <div id="bubbleOp" class="bubble hidden"></div>
+  <div id="bubbleMe" class="bubble hidden"></div>
+  <div id="emotes" class="hidden"><button data-e="👍">👍</button><button data-e="😂">😂</button><button data-e="😱">😱</button><button data-e="🔥">🔥</button></div>
+</div>
+<div id="rhythm" class="hidden"><div id="approach"></div><div id="target"></div></div>
+
+<div id="scrTitle" class="screen">
+  <div class="panel" style="text-align:center">
+    <h1>🏓 리듬 탁구</h1>
+    <p class="sub">타이밍에 맞춰 드래그! 드라이브·커트·터치로 상대를 흔들어라</p>
+    <div class="row" style="justify-content:center">
+      <button class="primary" id="btnStart">시작하기</button>
+      <button class="ghost" id="btnTut">조작법</button>
+      <button class="ghost" id="btnSettings2">설정</button>
+    </div>
+  </div>
+</div>
+
+<div id="scrCustom" class="screen hidden">
+  <div class="panel">
+    <h2>👤 캐릭터 만들기 <small style="opacity:.6;font-size:13px">미리보기를 드래그하면 회전</small></h2>
+    <div id="custWrap">
+      <canvas id="prev"></canvas>
+      <div class="col">
+        <label class="f">닉네임 <input type="text" id="cName" maxlength="10" placeholder="닉네임"></label>
+        <label class="f">피부색 <input type="color" id="cSkin"></label>
+        <label class="f">헤어스타일 <select id="cHair"></select></label>
+        <label class="f">머리색 <input type="color" id="cHairColor"></label>
+        <label class="f">상의 색 <input type="color" id="cTop"></label>
+        <label class="f">하의 색 <input type="color" id="cBottom"></label>
+        <label class="f">액세서리 <select id="cAcc"></select></label>
+        <label class="f">키 <input type="range" id="cHeight" min="0.85" max="1.15" step="0.01"></label>
+        <label class="f">덩치 <input type="range" id="cBulk" min="0.8" max="1.25" step="0.01"></label>
+        <label class="f">라켓 러버 <span><select id="cRubber"><option value="red">빨강</option><option value="black">검정</option><option value="custom">커스텀</option></select> <input type="color" id="cRubberColor"></span></label>
+        <div class="row"><button id="btnRandom">🎲 랜덤</button><button class="primary" id="btnCustomDone">저장하고 계속</button><button class="ghost" id="btnCustomBack">뒤로</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="scrMode" class="screen hidden">
+  <div class="panel" style="text-align:center">
+    <h2>모드 선택</h2>
+    <div class="cards">
+      <button class="card" id="btnModeAI"><div class="ic">🤖</div><b>싱글 플레이</b><small>8단계 난이도의 개성 있는 AI와 대결</small></button>
+      <button class="card" id="btnModeMulti"><div class="ic">🌐</div><b>멀티 플레이</b><small>방 코드로 친구와 P2P 실시간 대전</small></button>
+      <button class="card" id="btnModePractice"><div class="ic">🎯</div><b>연습 모드</b><small>공을 계속 보내주는 기계와 점수 없이 연습</small></button>
+    </div>
+    <div class="row" style="justify-content:center;margin-top:14px"><button class="ghost" id="btnModeChar">캐릭터 수정</button><button class="ghost" id="btnModeTitle">타이틀로</button></div>
+  </div>
+</div>
+
+<div id="scrDiff" class="screen hidden">
+  <div class="panel">
+    <h2>난이도 선택</h2>
+    <div class="cards" id="diffCards"></div>
+    <div class="row" style="margin-top:12px"><button class="ghost" id="btnDiffBack">뒤로</button></div>
+  </div>
+</div>
+
+<div id="scrPractice" class="screen hidden">
+  <div class="panel" style="text-align:center">
+    <h2>🎯 연습 모드</h2>
+    <p class="sub">기계가 공을 계속 보내줘요. 점수도, 실점도 없어요.</p>
+    <div class="col" style="text-align:left">
+      <label class="f">공 종류 <select id="pType"><option value="mix">랜덤</option><option value="drive">드라이브 (빠르고 낮게)</option><option value="cut">커트 (느리고 높게)</option><option value="touch">짧은 공 (네트 앞)</option></select></label>
+      <label class="f">공 속도 <select id="pSpeed"><option value="slow">느림</option><option value="mid" selected>보통</option><option value="fast">빠름</option></select></label>
+      <label class="f">공 코스 <select id="pCourse"><option value="rand">랜덤</option><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option><option value="alt">좌우 번갈아</option></select></label>
+      <label class="f">공 간격 <span><input type="range" id="pGap" min="0.1" max="2" step="0.1" value="1.4"> <span id="pGapV">1.4초</span></span></label>
+    </div>
+    <div class="row" id="pRowStart" style="justify-content:center;margin-top:12px"><button class="primary" id="btnPracticeStart">시작</button><button class="ghost" id="btnPracticeBack">뒤로</button></div>
+    <div class="row hidden" id="pRowLive" style="justify-content:center;margin-top:12px"><button class="primary" id="btnPracticeApply">적용하고 계속</button><button id="btnPracticeReset">기록 초기화</button><button class="ghost" id="btnPracticeMenu">메뉴로</button></div>
+  </div>
+</div>
+
+<div id="scrLobby" class="screen hidden">
+  <div class="panel" style="text-align:center">
+    <h2>🌐 멀티 플레이</h2>
+    <div id="lobbyMenu">
+      <div class="row" style="justify-content:center"><button class="primary" id="btnHost">방 만들기</button></div>
+      <div class="row" style="justify-content:center"><input class="code-in" id="joinCode" maxlength="6" placeholder="방 코드" inputmode="numeric"><button id="btnJoin">참가</button></div>
+    </div>
+    <div id="lobbyHost" class="hidden">
+      <p class="sub">친구에게 이 코드를 알려주세요</p>
+      <div class="code" id="roomCode">------</div>
+      <div class="row" style="justify-content:center"><button id="btnCopy">📋 복사</button></div>
+    </div>
+    <p id="lobbyStatus" class="sub" style="margin-top:12px"></p>
+    <div class="row" style="justify-content:center"><button class="ghost" id="btnLobbyBack">뒤로</button></div>
+  </div>
+</div>
+
+<div id="scrResult" class="screen hidden">
+  <div class="panel" style="text-align:center">
+    <h2 id="resTitle">승리!</h2>
+    <div id="resScore" style="font-size:40px;font-weight:900;margin-bottom:6px">7 : 3</div>
+    <div class="stats" id="resStats"></div>
+    <div class="row" style="justify-content:center" id="resBtnsAI">
+      <button class="primary" id="btnAgain">다시하기</button><button id="btnChangeDiff">난이도 변경</button><button class="ghost" id="btnResMenu">메뉴로</button>
+    </div>
+    <div class="row" style="justify-content:center" id="resBtnsMulti">
+      <button class="primary" id="btnRematch">재시작 요청</button><button class="ghost" id="btnResMenu2">메뉴로</button>
+    </div>
+    <p class="sub" id="rematchStatus" style="margin-top:10px"></p>
+  </div>
+</div>
+
+<div id="scrPause" class="screen hidden">
+  <div class="panel" style="text-align:center">
+    <h2>⏸ 일시정지</h2>
+    <div class="row" style="justify-content:center"><button class="primary" id="btnResume">계속하기</button><button id="btnPauseSettings">설정</button><button class="ghost" id="btnPauseMenu">메뉴로</button></div>
+  </div>
+</div>
+
+<div id="scrSettings" class="screen hidden">
+  <div class="panel">
+    <h2>⚙ 설정</h2>
+    <div class="col">
+      <label class="f">볼륨 <input type="range" id="sVol" min="0" max="1" step="0.05"></label>
+      <label class="f">음소거 <input type="checkbox" id="sMute"></label>
+      <label class="f">그래픽 품질 <select id="sQuality"><option value="low">낮음</option><option value="mid">보통</option><option value="high">높음</option></select></label>
+      <label class="f">판정 오프셋 보정 (ms) <span><input type="range" id="sOffset" min="-120" max="120" step="5"> <span id="sOffsetV">0</span></span></label>
+      <p class="sub" style="font-size:12px">양수: 판정이 늦게 느껴질 때 / 음수: 빠르게 느껴질 때</p>
+    </div>
+    <div class="row"><button class="primary" id="btnSettingsClose">닫기</button></div>
+  </div>
+</div>
+
+<div id="scrTut" class="screen hidden">
+  <div class="panel tut">
+    <h2>🎯 조작법</h2>
+    <ul>
+      <li>공이 내 쪽으로 오면 <b>작은 원(목표)</b>이 생기고 <b>큰 원</b>이 점점 줄어듭니다. <b>원 위치에서 시작해</b> <b>두 원이 겹치는 순간</b>에 드래그!</li>
+      <li><span class="arrow">↑</span> 아래→위 드래그: <b class="P">드라이브</b>(탑스핀, 빠르고 낮게)</li>
+      <li><span class="arrow">↓</span> 위→아래 드래그: <b class="G">커트</b>(백스핀, 느리고 높게 뜸)</li>
+      <li><span class="arrow">•</span> 짧은 탭: <b class="O">터치</b>(네트 앞에 짧게)</li>
+      <li>드래그의 <b>좌우 방향</b> = 코스, <b>드래그 속도</b> = 공 속도</li>
+      <li>판정: <b class="P">PERFECT</b> ±52ms · <b class="G">GREAT</b> ±117ms · <b class="O">GOOD</b> ±195ms · <b class="M">MISS</b> = 실점</li>
+      <li>정확할수록 상대에게 주어지는 반응 시간이 짧아집니다. 7점 선취 승리, 서브는 2점마다 교대.</li>
+    </ul>
+    <div class="row"><button class="primary" id="btnTutClose">알겠어요!</button></div>
+  </div>
+</div>
+
+<div id="notice" class="screen hidden">
+  <div class="panel" style="max-width:420px"><p id="noticeText" style="font-size:18px;margin:0 0 14px"></p><button class="primary" id="btnNoticeOk">확인</button></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+const CONFIG = {
+  WIN_SCORE: 7, DEUCE: false, SERVE_SWITCH: 2,
+  JUDGE: { PERFECT: 52, GREAT: 117, GOOD: 195 },
+  WINDOW: { BASE: 1.2, MUL: { PERFECT: 0.6, GREAT: 0.8, GOOD: 1.1 }, MIN: 0.35, MAX: 1.8, SPEED_REF: 8 },
+  PHYS: { DT: 1/120, G: 9.81, DRAG: 0.11, MAGNUS: 0.004, REST_TABLE: 0.88, REST_FLOOR: 0.55, SPIN_FRICTION: 0.25, SPIN_DECAY_BOUNCE: 0.7, SPIN_AIR_DECAY: 0.1, BALL_R: 0.02 },
+  TABLE: { L: 2.74, W: 1.525, H: 0.76, NET_H: 0.1525, NET_OVER: 0.1525 },
+  NET_CHANCE: 0.01,
+  SHOT: {
+    drive: { minSpeed: 6.0, maxSpeed: 12.0, spin: 260, depth: 0.82 },
+    cut:   { minSpeed: 4.0, maxSpeed: 6.8,  spin: -190, depth: 0.72 },
+    touch: { minSpeed: 3.0, maxSpeed: 4.3,  spin: -40,  depth: 0.38 },
+  },
+  INPUT: { TAP_PX: 15, TAP_MS: 150, SPEED_MIN: 0.25, SPEED_MAX: 2.2 },
+  GREAT_ERROR: 0.10, GOOD_PENALTY: { SPEED: 0.8, ERROR: 0.28 },
+  HIT_PLANE: 0.30, SWING_DUR: 0.45,
+  CAMERA: { HEIGHT: 2.35, DIST: 4.3, LOOK_Y: 0.55, SHAKE_SPEED: 11 },
+  AI: {
+    rally: { key:'rally', icon:'🌱', lv:1, name:'LV 1. 랠리 (Rally)', short:'랠리', desc:'탁구공이 부드럽게 오가는 초급 단계',
+      grades:{PERFECT:0.02,GREAT:0.15,GOOD:0.63,MISS:0.20}, tech:{drive:0.05,cut:0.4,touch:0.55}, course:'center', power:[0.05,0.3], pressure:0.5, winMul:1.15, scratch:true,
+      lines:['아이고 허리야~','천천히 가보자','한 판 더?','어이쿠!','잘 치는데?'] },
+    serve: { key:'serve', icon:'🎯', lv:2, name:'LV 2. 서브 (Serve)', short:'서브', desc:'서브의 기초를 배우는 단계',
+      grades:{PERFECT:0.07,GREAT:0.24,GOOD:0.57,MISS:0.12}, tech:{drive:0.1,cut:0.45,touch:0.45}, course:'center', power:[0.1,0.4], pressure:0.45, winMul:1.1, scratch:true,
+      lines:['서브가 중요하지','기본부터 차근차근','좋은 리턴이야','아깝다','한 번 더!'] },
+    drive: { key:'drive', icon:'🔥', lv:3, name:'LV 3. 드라이브 (Drive)', short:'드라이브', desc:'공격적인 탑스핀이 들어오는 중급 단계',
+      grades:{PERFECT:0.14,GREAT:0.36,GOOD:0.42,MISS:0.08}, tech:{drive:0.5,cut:0.3,touch:0.2}, course:'sides', power:[0.25,0.55], pressure:0.35, winMul:1.05, 
+      lines:['회전 좀 걸어볼까','좌우로 흔들어주지','나이스 샷','집중, 집중','이건 어때?'] },
+    smash: { key:'smash', icon:'💥', lv:4, name:'LV 4. 스매시 (Smash)', short:'스매시', desc:'강력한 결정구를 날리는 중상급 단계',
+      grades:{PERFECT:0.24,GREAT:0.42,GOOD:0.28,MISS:0.06}, tech:{drive:0.65,cut:0.2,touch:0.15}, course:'sides', power:[0.4,0.7], pressure:0.3, winMul:1.0, 
+      lines:['각오해라!','받을 수 있겠어?','한 방이다','좋은 코스네','다음엔 더 강하게'] },
+    defense: { key:'defense', icon:'🛡️', lv:5, name:'LV 5. 디펜스 (Defense)', short:'디펜스', desc:'어떤 공격이든 받아치는 끈질긴 단계',
+      grades:{PERFECT:0.36,GREAT:0.43,GOOD:0.17,MISS:0.04}, tech:{drive:0.25,cut:0.5,touch:0.25}, course:'sides', power:[0.5,0.8], pressure:0.2, winMul:0.95, 
+      lines:['다 받아주지','끝까지 간다','아직 안 끝났어','그 정도로는 안 돼','버티는 게 이기는 거야'] },
+    allround: { key:'allround', icon:'⚖️', lv:6, name:'LV 6. 올라운더 (All-Rounder)', short:'올라운더', desc:'공수 밸런스가 완벽한 고수 단계',
+      grades:{PERFECT:0.5,GREAT:0.38,GOOD:0.1,MISS:0.02}, tech:{drive:0.4,cut:0.3,touch:0.3}, course:'weak', power:[0.6,0.9], pressure:0.1, winMul:0.88, 
+      lines:['거기가 약하군','빈틈이 보이네','균형이 중요하지','좋은 리턴이야','다음은 코너다'] },
+    master: { key:'master', icon:'🥋', lv:7, name:'LV 7. 마스터 (Master)', short:'마스터', desc:'변칙적인 스핀과 전술을 구사하는 달인 단계',
+      grades:{PERFECT:0.66,GREAT:0.3,GOOD:0.035,MISS:0.005}, tech:{drive:0.45,cut:0.4,touch:0.15}, course:'weak', power:[0.7,0.97], pressure:0.05, winMul:0.8, fake:true,
+      lines:['리듬을 흔들어주지','속았지?','수읽기가 아직 멀었어','흐름은 내 것이다','재미있군'] },
+    grand: { key:'grand', icon:'👑', lv:8, name:'LV 8. 그랜드 스매시 (Grand Smash)', short:'그랜드 스매시', desc:'세계 최고 권위의 대회를 뜻하는 최상위 보스 단계',
+      grades:{PERFECT:0.85,GREAT:0.13,GOOD:0.015,MISS:0.005}, tech:{drive:0.55,cut:0.35,touch:0.1}, course:'weak', power:[0.85,1.0], pressure:0, winMul:0.5, fake:true,
+      lines:['…','네 리듬은 이미 읽었다','그림자를 봐라','느리다','…흠, 제법'] },
+  },
+};
+
+const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const lerp = (a,b,t) => a + (b-a)*t;
+const rand = (a,b) => a + Math.random()*(b-a);
+const choice = arr => arr[Math.floor(Math.random()*arr.length)];
+const UP = new THREE.Vector3(0,1,0);
+const show = id => $(id).classList.remove('hidden'), hide = id => $(id).classList.add('hidden');
+function weighted(obj){ let r=Math.random(), acc=0; for(const k in obj){ acc+=obj[k]; if(r<acc) return k; } return Object.keys(obj).pop(); }
+const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} } };
+
+const SFX = {
+  ctx:null, master:null, muted:false, volume:0.8, noiseBuf:null, tension:null, viewSide:1,
+  init(){
+    if(this.ctx) return;
+    const C = window.AudioContext || window.webkitAudioContext; if(!C) return;
+    this.ctx = new C(); this.master = this.ctx.createGain(); this.master.gain.value = this.muted?0:this.volume; this.master.connect(this.ctx.destination);
+    const n = this.ctx.sampleRate; const buf = this.ctx.createBuffer(1, n, n); const d = buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i] = Math.random()*2-1; this.noiseBuf = buf;
+  },
+  resume(){ if(this.ctx && this.ctx.state==='suspended') this.ctx.resume(); },
+  setVolume(v){ this.volume=v; if(this.master) this.master.gain.value = this.muted?0:v; },
+  setMuted(m){ this.muted=m; if(this.master) this.master.gain.value = m?0:this.volume; $('#btnMute').textContent = m?'🔇':'🔊'; },
+  pan(x){ const p=this.ctx.createStereoPanner(); p.pan.value = clamp((x||0)*this.viewSide/1.2, -1, 1); p.connect(this.master); return p; },
+  tone(f, dur, o={}){
+    if(!this.ctx || this.muted) return; const c=this.ctx, t=c.currentTime+(o.delay||0);
+    const osc=c.createOscillator(); osc.type=o.type||'sine'; osc.frequency.setValueAtTime(f,t);
+    if(o.freqEnd) osc.frequency.exponentialRampToValueAtTime(o.freqEnd, t+dur);
+    const g=c.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(o.gain||0.3, t+0.004); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    osc.connect(g); g.connect(this.pan(o.x)); osc.start(t); osc.stop(t+dur+0.02);
+  },
+  noise(dur, o={}){
+    if(!this.ctx || this.muted) return; const c=this.ctx, t=c.currentTime+(o.delay||0);
+    const src=c.createBufferSource(); src.buffer=this.noiseBuf; src.loop=true;
+    const f=c.createBiquadFilter(); f.type=o.type||'bandpass'; f.frequency.value=o.filterFreq||2000; f.Q.value=o.Q||1;
+    const g=c.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(o.gain||0.2, t+(o.attack||0.003)); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    src.connect(f); f.connect(g); g.connect(this.pan(o.x)); src.start(t); src.stop(t+dur+0.05);
+  },
+  hit(speed, perfect, x){ const s=clamp(speed/15,0,1);
+    this.noise(0.035+0.02*s, {gain:0.25+0.3*s, x, filterFreq:2400+2600*s, Q:1.2});
+    this.tone(1700+1000*s, 0.09, {gain:0.2+0.25*s, x, freqEnd:800});
+    if(perfect) this.tone(3400, 0.14, {gain:0.14, x, type:'triangle', freqEnd:2800}); },
+  tableBounce(x){ this.tone(540, 0.1, {gain:0.3, x, type:'triangle', freqEnd:300}); this.noise(0.025, {gain:0.12, x, filterFreq:1200, type:'lowpass'}); },
+  floorBounce(x, n){ const g=0.28*Math.pow(0.6, n); if(g<0.01) return; this.tone(250, 0.09, {gain:g, x, freqEnd:130}); this.noise(0.03, {gain:g*0.5, x, filterFreq:700, type:'lowpass'}); },
+  net(x){ this.noise(0.14, {gain:0.22, x, filterFreq:900, Q:2}); this.tone(190, 0.18, {gain:0.12, x, freqEnd:110}); },
+  judge(g){ if(g==='PERFECT'){ this.tone(1320,0.12,{gain:0.12,type:'triangle'}); this.tone(1760,0.18,{gain:0.12,type:'triangle',delay:0.07}); this.tone(2640,0.22,{gain:0.08,type:'sine',delay:0.14}); }
+    else if(g==='GREAT'){ this.tone(1100,0.12,{gain:0.1,type:'triangle'}); this.tone(1480,0.14,{gain:0.08,type:'triangle',delay:0.06}); }
+    else if(g==='GOOD'){ this.tone(800,0.12,{gain:0.09,type:'triangle'}); }
+    else { this.tone(160,0.3,{gain:0.15,type:'sawtooth',freqEnd:70}); this.noise(0.2,{gain:0.1,filterFreq:400,type:'lowpass'}); } },
+  point(win){ if(win){ [523,659,784,1047].forEach((f,i)=>this.tone(f,0.18,{gain:0.14,type:'triangle',delay:i*0.08})); } else { this.tone(392,0.25,{gain:0.12,type:'triangle'}); this.tone(311,0.4,{gain:0.12,type:'triangle',delay:0.18}); } },
+  cheer(k=1){ if(!this.ctx||this.muted) return; this.noise(1.4, {gain:0.16*k, filterFreq:900, Q:0.6, attack:0.25}); this.noise(1.0, {gain:0.08*k, filterFreq:2200, Q:0.8, attack:0.35, delay:0.1}); },
+  tensionStart(){ if(!this.ctx||this.tension) return; const c=this.ctx; const o=c.createOscillator(); o.type='sawtooth'; o.frequency.value=55; const o2=c.createOscillator(); o2.type='sine'; o2.frequency.value=0.5;
+    const lg=c.createGain(); lg.gain.value=0.03; const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=260; const g=c.createGain(); g.gain.value=0.06;
+    o2.connect(lg); lg.connect(g.gain); o.connect(f); f.connect(g); g.connect(this.master); o.start(); o2.start(); this.tension={o,o2,g}; },
+  tensionStop(){ if(!this.tension) return; const t=this.tension; try{ t.o.stop(); t.o2.stop(); }catch(e){} this.tension=null; },
+};
+
+const HAIR_NAMES = ['짧은머리','긴머리','포니테일','삐죽머리','단발'];
+const ACC_NAMES = { none:'없음', band:'머리띠', glasses:'안경', cap:'모자' };
+const DEFAULT_CHAR = { name:'플레이어', skin:'#f1c9a5', hair:0, hairColor:'#2b1b12', top:'#2f6cff', bottom:'#1b2238', acc:'none', height:1.0, bulk:1.0, rubber:'red', rubberColor:'#ff2e2e' };
+function randomChar(){
+  const skins=['#f7dcc4','#f1c9a5','#d9a06a','#b97a4a','#7a4a2a','#ffe0c8'];
+  const cols=['#2f6cff','#ff4d6d','#22c55e','#f59e0b','#a855f7','#14b8a6','#ffffff','#111827','#ef4444','#eab308'];
+  const hairs=['#2b1b12','#111111','#6b3e1f','#d9b36b','#c0392b','#f1f1f1','#3b82f6','#e879f9'];
+  const rub = choice(['red','black','custom']);
+  return { name: choice(['불꽃이','스매셔','탁구왕','핑퐁요정','회전마','네트킬러','바운스','스핀짱'])+Math.floor(rand(1,99)), skin:choice(skins), hair:Math.floor(rand(0,HAIR_NAMES.length)), hairColor:choice(hairs), top:choice(cols), bottom:choice(cols), acc:choice(Object.keys(ACC_NAMES)), height:+rand(0.88,1.12).toFixed(2), bulk:+rand(0.85,1.2).toFixed(2), rubber:rub, rubberColor:choice(['#ff2e2e','#2e7bff','#8b5cf6','#10b981','#f472b6']) };
+}
+const POSES = {
+  rest:[-0.5,0.35,0], ready:[-0.3,0.7,0.15],
+  fore:{ drive:[[0.5,1.0,0.5],[-0.7,0.6,0],[-1.7,-0.4,-0.5]], cut:[[-1.8,1.0,0.4],[-0.7,0.6,0],[0.1,0.2,-0.3]], touch:[[-0.4,0.6,0.1],[-0.9,0.5,0],[-1.1,0.4,-0.1]] },
+  back:{ drive:[[-0.3,-0.7,-0.5],[-0.9,0.2,0],[-1.4,1.2,0.5]], cut:[[-1.6,-0.7,-0.4],[-0.8,0.3,0],[-0.1,1.0,0.3]], touch:[[-0.6,-0.4,-0.1],[-0.9,0.2,0],[-1.0,0.4,0.1]] },
+};
+function makeCharacter(cfg){
+  const h=cfg.height, b=cfg.bulk; const g=new THREE.Group();
+  const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:0.75}, o));
+  const skin=M(cfg.skin), top=M(cfg.top), bottom=M(cfg.bottom), hair=M(cfg.hairColor), dark=M('#111111');
+  const add=(geo,mat,x,y,z,parent=g)=>{ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.castShadow=true; parent.add(m); return m; };
+  const legGeo=new THREE.CapsuleGeometry(0.06*b, 0.38*h, 4, 10);
+  const legL=add(legGeo, skin, -0.09*b, 0.3*h, 0), legR=add(legGeo, skin, 0.09*b, 0.3*h, 0);
+  add(new THREE.CylinderGeometry(0.19*b,0.2*b,0.2*h,14), bottom, 0, 0.62*h, 0);
+  const torso=new THREE.Group(); torso.position.y=0.7*h; g.add(torso);
+  add(new THREE.CapsuleGeometry(0.17*b, 0.34*h, 6, 14), top, 0, 0.27*h, 0, torso);
+  const head=new THREE.Group(); head.position.y=0.76*h; torso.add(head);
+  add(new THREE.SphereGeometry(0.13,20,16), skin, 0,0.04,0, head);
+  const eyeGeo=new THREE.SphereGeometry(0.018,8,8); add(eyeGeo,dark,-0.045,0.06,-0.115,head); add(eyeGeo,dark,0.045,0.06,-0.115,head);
+  add(new THREE.SphereGeometry(0.02,8,8), M('#ee5588'), 0,0.0,-0.125, head).scale.set(1.4,0.6,0.6);
+  const hs=cfg.hair|0;
+  if(hs===0){ add(new THREE.SphereGeometry(0.135,20,12,0,Math.PI*2,0,Math.PI*0.5), hair, 0,0.05,0,head); }
+  else if(hs===1){ add(new THREE.SphereGeometry(0.14,20,12,0,Math.PI*2,0,Math.PI*0.55), hair, 0,0.05,0,head); add(new THREE.CylinderGeometry(0.12,0.1,0.32,14), hair, 0,-0.08,0.06,head); }
+  else if(hs===2){ add(new THREE.SphereGeometry(0.135,20,12,0,Math.PI*2,0,Math.PI*0.5), hair, 0,0.05,0,head); add(new THREE.CapsuleGeometry(0.04,0.22,4,8), hair, 0,-0.06,0.15,head).rotation.x=0.5; add(new THREE.TorusGeometry(0.045,0.012,6,12), M('#ff5c8a'), 0,0.07,0.13,head).rotation.x=Math.PI/2; }
+  else if(hs===3){ for(let i=0;i<7;i++){ const a=i/7*Math.PI*2; const c=add(new THREE.ConeGeometry(0.05,0.17,6), hair, Math.cos(a)*0.08, 0.15, Math.sin(a)*0.08, head); c.rotation.set(Math.sin(a)*0.6,0,-Math.cos(a)*0.6);} add(new THREE.ConeGeometry(0.06,0.22,6), hair, 0,0.2,0,head); }
+  else { add(new THREE.SphereGeometry(0.145,20,12,0,Math.PI*2,0,Math.PI*0.62), hair, 0,0.04,0,head); add(new THREE.CylinderGeometry(0.145,0.14,0.12,16,1,true), hair, 0,-0.03,0,head).material.side=THREE.DoubleSide; }
+  if(cfg.acc==='band'){ add(new THREE.TorusGeometry(0.135,0.018,8,24), M('#ff3b3b'), 0,0.07,0,head).rotation.x=Math.PI/2; }
+  if(cfg.acc==='glasses'){ const gm=M('#222222'); add(new THREE.TorusGeometry(0.035,0.006,6,16), gm, -0.048,0.06,-0.125,head); add(new THREE.TorusGeometry(0.035,0.006,6,16), gm, 0.048,0.06,-0.125,head); add(new THREE.BoxGeometry(0.03,0.006,0.006), gm, 0,0.06,-0.125,head); }
+  if(cfg.acc==='cap'){ const cm=M('#1e90ff'); add(new THREE.SphereGeometry(0.14,18,10,0,Math.PI*2,0,Math.PI*0.5), cm, 0,0.05,0,head); add(new THREE.BoxGeometry(0.2,0.015,0.12), cm, 0,0.06,-0.17,head); }
+  const armL=new THREE.Group(); armL.position.set(-0.22*b, 0.5*h, 0); torso.add(armL);
+  add(new THREE.CapsuleGeometry(0.045*b, 0.28*h, 4, 8), skin, 0,-0.16*h,0, armL);
+  const armR=new THREE.Group(); armR.position.set(0.22*b, 0.5*h, 0); torso.add(armR);
+  add(new THREE.CapsuleGeometry(0.045*b, 0.28*h, 4, 8), skin, 0,-0.16*h,0, armR);
+  const racket=new THREE.Group(); racket.position.set(0,-0.34*h,0); armR.add(racket);
+  add(new THREE.CylinderGeometry(0.014,0.016,0.1,8), M('#c9a36b'), 0,-0.02,0, racket);
+  const rubF = cfg.rubber==='red'?'#e11d1d':cfg.rubber==='black'?'#151515':cfg.rubberColor; const rubB = cfg.rubber==='black'?'#e11d1d':'#151515';
+  const blade=add(new THREE.CylinderGeometry(0.08,0.08,0.012,20), M('#d9b982'), 0,-0.16,0, racket); blade.rotation.x=Math.PI/2;
+  const rf=add(new THREE.CylinderGeometry(0.079,0.079,0.004,20), M(rubF), 0,-0.16,-0.008, racket); rf.rotation.x=Math.PI/2;
+  const rb=add(new THREE.CylinderGeometry(0.079,0.079,0.004,20), M(rubB), 0,-0.16,0.008, racket); rb.rotation.x=Math.PI/2;
+  racket.rotation.set(-1.2,0,0.3);
+  return { group:g, torso, head, armL, armR, legL, legR, racket, cfg, h, b,
+    side:1, targetX:0, targetZ:0, state:'idle', swing:null, fakeUntil:0, stateUntil:0, cur:[-0.5,0.35,0], bob:0, moveT:0, scratch:false };
+}
+function charSetSide(ch, side){ ch.side=side; ch.group.rotation.y = side===1?0:Math.PI; ch.targetZ = side*(CONFIG.TABLE.L/2+0.6); ch.group.position.set(0,0,ch.targetZ); ch.targetX=0; }
+function charSwing(ch, tech, hand, startPhase=0){ ch.swing={tech, hand, t:startPhase*CONFIG.SWING_DUR}; ch.state='idle'; }
+function charState(ch, s, dur){ ch.state=s; ch.stateUntil=performance.now()/1000+dur; }
+function updateCharacter(ch, dt, now){
+  const g=ch.group;
+  const dx=ch.targetX-g.position.x, dz=ch.targetZ-g.position.z; const dist=Math.hypot(dx,dz);
+  const step=Math.min(dist, 3.6*dt); if(dist>0.005){ g.position.x+=dx/dist*step; g.position.z+=dz/dist*step; ch.moveT+=dt*14; } else ch.moveT*=0.8;
+  const moving=dist>0.02;
+  if(ch.stateUntil && now>ch.stateUntil && (ch.state==='celebrate'||ch.state==='sad')) { ch.state='idle'; ch.stateUntil=0; }
+  let target=POSES.rest, k=10, bodyY=0, bend=0, lArm=[-0.2,-0.25], headX=0, legSwing=0;
+  bodyY=Math.sin(now*4)*0.01;
+  if(moving) legSwing=Math.sin(ch.moveT)*0.5;
+  if(ch.state==='ready'){ target=POSES.ready; bend=0.18; }
+  if(ch.state==='celebrate'){ bodyY=Math.abs(Math.sin(now*9))*0.22; target=[-2.9,0.4,0]; lArm=[-2.9,-0.4]; k=14; }
+  if(ch.state==='sad'){ bend=0.45; headX=0.5; if(ch.scratch){ target=[-2.5,0.25+Math.sin(now*22)*0.08,0]; headX=-0.1; } else target=[-0.1,0.2,0]; k=8; }
+  if(ch.fakeUntil>now){ target=POSES.fore.cut[0]; k=18; }
+  if(ch.swing){ const sw=ch.swing; sw.t+=dt; const p=sw.t/CONFIG.SWING_DUR; const kf=(POSES[sw.hand]||POSES.fore)[sw.tech]||POSES.fore.touch;
+    const ease=x=>x<0?0:x>1?1:(1-Math.cos(x*Math.PI))/2;
+    const mix=(a,b,t)=>[lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t)];
+    target = p<0.5? mix(kf[0],kf[1],ease(p/0.5)) : mix(kf[1],kf[2],ease((p-0.5)/0.5));
+    bend=0.12; k=28; if(p>=1) ch.swing=null; }
+  const a=1-Math.exp(-dt*k);
+  ch.cur[0]=lerp(ch.cur[0],target[0],a); ch.cur[1]=lerp(ch.cur[1],target[1],a); ch.cur[2]=lerp(ch.cur[2],target[2],a);
+  ch.armR.rotation.set(ch.cur[0],0,ch.cur[1]);
+  ch.torso.rotation.set(lerp(ch.torso.rotation.x,bend,a), lerp(ch.torso.rotation.y,ch.cur[2],a), 0);
+  ch.head.rotation.x=lerp(ch.head.rotation.x,headX,a);
+  ch.armL.rotation.set(lerp(ch.armL.rotation.x,lArm[0],a),0,lerp(ch.armL.rotation.z,lArm[1],a));
+  ch.legL.rotation.x=legSwing; ch.legR.rotation.x=-legSwing;
+  g.position.y=bodyY;
+}
+
+const VIEW = { side:1, shake:0, quality:'mid' };
+const renderer = new THREE.WebGLRenderer({ canvas:$('#gl'), antialias:true, powerPreference:'high-performance' });
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0b1020); scene.fog = new THREE.Fog(0x0b1020, 9, 20);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 60);
+const T = CONFIG.TABLE, HL = T.L/2, HW = T.W/2;
+let hemi, sun, redLight, floorMat, crowd;
+function buildStadium(){
+  const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:0.8}, o));
+  hemi = new THREE.HemisphereLight(0xdfe8ff, 0x1a2240, 0.75); scene.add(hemi);
+  sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(3, 8, 2); sun.castShadow = true;
+  sun.shadow.camera.left=-5; sun.shadow.camera.right=5; sun.shadow.camera.top=6; sun.shadow.camera.bottom=-6; sun.shadow.camera.near=1; sun.shadow.camera.far=20; sun.shadow.bias=-0.0008;
+  scene.add(sun);
+  const s1 = new THREE.SpotLight(0xfff2d0, 60, 14, 0.5, 0.6); s1.position.set(0,6,0); scene.add(s1);
+  redLight = new THREE.PointLight(0xff2020, 0, 12); redLight.position.set(0,3,0); scene.add(redLight);
+  floorMat = M(0x273a5c, {roughness:0.95});
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(14, 18), floorMat); floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
+  const court = new THREE.Mesh(new THREE.PlaneGeometry(7, 10), M(0xb6412f, {roughness:0.9})); court.rotation.x=-Math.PI/2; court.position.y=0.002; court.receiveShadow=true; scene.add(court);
+  const tableTop = new THREE.Mesh(new THREE.BoxGeometry(T.W, 0.03, T.L), M(0x1f5fa8, {roughness:0.5})); tableTop.position.y=T.H-0.015; tableTop.castShadow=true; tableTop.receiveShadow=true; scene.add(tableTop);
+  const lineM = M(0xffffff, {roughness:0.5});
+  const mkLine=(w,l,x,z)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,0.002,l), lineM); m.position.set(x,T.H+0.001,z); scene.add(m); };
+  mkLine(0.02, T.L, -HW+0.01, 0); mkLine(0.02, T.L, HW-0.01, 0); mkLine(T.W, 0.02, 0, -HL+0.01); mkLine(T.W, 0.02, 0, HL-0.01); mkLine(0.006, T.L, 0, 0);
+  const legM = M(0x222a3a); for(const sx of [-1,1]) for(const sz of [-1,1]){ const leg=new THREE.Mesh(new THREE.BoxGeometry(0.05,T.H-0.03,0.05), legM); leg.position.set(sx*(HW-0.15), (T.H-0.03)/2, sz*(HL-0.3)); leg.castShadow=true; scene.add(leg); }
+  const net = new THREE.Mesh(new THREE.PlaneGeometry(T.W+T.NET_OVER*2, T.NET_H), new THREE.MeshStandardMaterial({color:0x222233, transparent:true, opacity:0.55, side:THREE.DoubleSide}));
+  net.position.set(0, T.H+T.NET_H/2, 0); scene.add(net);
+  const tape = new THREE.Mesh(new THREE.BoxGeometry(T.W+T.NET_OVER*2, 0.012, 0.008), lineM); tape.position.set(0, T.H+T.NET_H, 0); scene.add(tape);
+  for(const sx of [-1,1]){ const post=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,T.NET_H+0.02,8), legM); post.position.set(sx*(HW+T.NET_OVER), T.H+T.NET_H/2, 0); scene.add(post); }
+  const fenceM = M(0x1b2b57), fenceTop = M(0xffffff);
+  const mkFence=(w,l,x,z)=>{ const f=new THREE.Mesh(new THREE.BoxGeometry(w,0.7,l), fenceM); f.position.set(x,0.35,z); f.castShadow=true; scene.add(f); const t=new THREE.Mesh(new THREE.BoxGeometry(w+0.02,0.04,l+0.02), fenceTop); t.position.set(x,0.72,z); scene.add(t); };
+  mkFence(0.06, 9.6, -3.4, 0); mkFence(0.06, 9.6, 3.4, 0); mkFence(6.8, 0.06, 0, -4.8); mkFence(6.8, 0.06, 0, 4.8);
+  const standM = M(0x121a33);
+  const heads=[], bodies=[];
+  for(const sx of [-1,1]) for(let r=0;r<4;r++){ const st=new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5+r*0.5, 11), standM); st.position.set(sx*(4.6+r*1.1), (0.5+r*0.5)/2, 0); scene.add(st);
+    for(let i=0;i<22;i++){ const z=-5+i*0.48+rand(-0.1,0.1); const x=sx*(4.6+r*1.1)+rand(-0.25,0.25); const y=0.5+r*0.5; heads.push([x,y+0.62,z]); bodies.push([x,y+0.3,z]); } }
+  for(let r=0;r<3;r++){ const st=new THREE.Mesh(new THREE.BoxGeometry(9, 0.5+r*0.5, 1.1), standM); st.position.set(0,(0.5+r*0.5)/2, -(6+r*1.1)); scene.add(st);
+    for(let i=0;i<18;i++){ const x=-4.2+i*0.5+rand(-0.1,0.1); const z=-(6+r*1.1)+rand(-0.25,0.25); const y=0.5+r*0.5; heads.push([x,y+0.62,z]); bodies.push([x,y+0.3,z]); } }
+  const cm = new THREE.MeshStandardMaterial({color:0x0a0e1e, roughness:1});
+  const hI = new THREE.InstancedMesh(new THREE.SphereGeometry(0.11,8,6), cm, heads.length);
+  const bI = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.12,0.16,0.5,6), cm, bodies.length);
+  const d=new THREE.Object3D();
+  bodies.forEach((p,i)=>{ d.position.set(...p); d.updateMatrix(); bI.setMatrixAt(i,d.matrix); });
+  heads.forEach((p,i)=>{ d.position.set(...p); d.updateMatrix(); hI.setMatrixAt(i,d.matrix); });
+  scene.add(hI); scene.add(bI); crowd = { heads, hI, d, excite:0 };
+  const wallM = M(0x0e1430); const back1=new THREE.Mesh(new THREE.BoxGeometry(14,5,0.2), wallM); back1.position.set(0,2.5,-9); scene.add(back1);
+  const back2=back1.clone(); back2.position.z=9; scene.add(back2);
+  for(const sx of [-1,1]){ const w=new THREE.Mesh(new THREE.BoxGeometry(0.2,5,18), wallM); w.position.set(sx*9,2.5,0); scene.add(w); }
+  const strip=new THREE.Mesh(new THREE.BoxGeometry(13.8,0.5,0.05), new THREE.MeshStandardMaterial({color:0x39c5ff, emissive:0x1070a0, emissiveIntensity:0.7})); strip.position.set(0,3.2,-8.85); scene.add(strip);
+  const strip2=strip.clone(); strip2.position.z=8.85; scene.add(strip2);
+}
+function updateCrowd(dt, now){ if(!crowd) return; crowd.excite=Math.max(0,crowd.excite-dt*0.6); const amp=0.02+crowd.excite*0.15;
+  const {heads,hI,d}=crowd; for(let i=0;i<heads.length;i++){ const p=heads[i]; d.position.set(p[0], p[1]+Math.abs(Math.sin(now*6+i*1.7))*amp, p[2]); d.updateMatrix(); hI.setMatrixAt(i,d.matrix); } hI.instanceMatrix.needsUpdate=true; }
+function setQuality(q){ VIEW.quality=q; const pr=window.devicePixelRatio||1;
+  if(q==='low'){ renderer.setPixelRatio(1); renderer.shadowMap.enabled=false; }
+  else if(q==='mid'){ renderer.setPixelRatio(Math.min(pr,1.5)); renderer.shadowMap.enabled=true; sun.shadow.mapSize.set(1024,1024); }
+  else { renderer.setPixelRatio(Math.min(pr,2)); renderer.shadowMap.enabled=true; sun.shadow.mapSize.set(2048,2048); }
+  if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; }
+  scene.traverse(o=>{ if(o.material) o.material.needsUpdate=true; }); }
+function setHardcoreLook(on){ hemi.groundColor.set(on?0x4a0a0a:0x1a2240); hemi.color.set(on?0xffd0d0:0xdfe8ff); redLight.intensity=on?25:0; scene.background.set(on?0x1a0508:0x0b1020); scene.fog.color.copy(scene.background); floorMat.color.set(on?0x3a1a24:0x273a5c); }
+function resize(){ const w=innerWidth, h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize);
+
+const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.PHYS.BALL_R*1.3, 16, 12), new THREE.MeshStandardMaterial({color:0xfff4d0, emissive:0x554400, emissiveIntensity:0.4, roughness:0.4}));
+ballMesh.castShadow=true; scene.add(ballMesh);
+const TRAIL_N=14, trailHist=[]; const trailMeshes=[];
+for(let i=0;i<TRAIL_N;i++){ const m=new THREE.Mesh(new THREE.SphereGeometry(0.018*(1-i/TRAIL_N)+0.004,8,6), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.5*(1-i/TRAIL_N)})); m.visible=false; scene.add(m); trailMeshes.push(m); }
+function updateTrail(){ if(!ball.active){ trailMeshes.forEach(m=>m.visible=false); trailHist.length=0; return; }
+  trailHist.unshift(ball.p.clone()); if(trailHist.length>TRAIL_N*2) trailHist.pop();
+  const s=spinScalar(ball); const col = s>60?0xff4040 : s<-30?0x40a0ff : 0xffffcc;
+  trailMeshes.forEach((m,i)=>{ const p=trailHist[i*2]; if(p){ m.visible=true; m.position.copy(p); m.material.color.set(col); } else m.visible=false; }); }
+const camTmp=new THREE.Vector3();
+function updateCamera(dt){ const s=VIEW.side, C=CONFIG.CAMERA; const bx = ball.active? clamp(ball.p.x,-1,1)*0.25 : 0;
+  camTmp.set(bx, C.HEIGHT, s*C.DIST); camera.position.lerp(camTmp, 1-Math.exp(-dt*4));
+  VIEW.shake=Math.max(0,VIEW.shake-dt*2.5); const sh=VIEW.shake*VIEW.shake*0.08;
+  camera.position.x+=rand(-sh,sh); camera.position.y+=rand(-sh,sh);
+  camera.lookAt(0, C.LOOK_Y, -s*0.3); }
+
+const ball = { p:new THREE.Vector3(), v:new THREE.Vector3(), w:new THREE.Vector3(), active:false, floorBounces:0, netDone:false, netFlag:false, resting:false, held:true };
+const _a=new THREE.Vector3(), _m=new THREE.Vector3(), _h=new THREE.Vector3(), _ax=new THREE.Vector3();
+function spinScalar(b){ _h.set(b.v.x,0,b.v.z); const hs=_h.length(); if(hs<1e-4) return 0; _h.divideScalar(hs); _ax.crossVectors(UP,_h); return b.w.dot(_ax); }
+function stepBall(b, dt, ev, forceNet){
+  const P=CONFIG.PHYS, R=P.BALL_R, v=b.v, p=b.p, w=b.w;
+  const sp=v.length();
+  _a.set(0,-P.G,0); _a.addScaledVector(v, -P.DRAG*sp);
+  _m.crossVectors(w,v).multiplyScalar(P.MAGNUS); _a.add(_m);
+  v.addScaledVector(_a,dt);
+  const pz=p.z, py=p.y; p.addScaledVector(v,dt); w.multiplyScalar(1-P.SPIN_AIR_DECAY*dt);
+  if((pz>0)!==(p.z>0) && !b.netDone){
+    const hits = forceNet || (p.y-R < T.H+T.NET_H && Math.abs(p.x) < HW+T.NET_OVER);
+    if(hits){ b.netDone=true; p.z = pz>0?0.03:-0.03; p.y=Math.min(p.y, T.H+T.NET_H); v.z*=-0.12; v.x*=0.4; v.y=Math.min(v.y,0)*0.2+0.3; w.multiplyScalar(0.3); ev&&ev.push({type:'net', p:p.clone()}); }
+  }
+  if(v.y<0 && p.y-R<=T.H && py-R>T.H && Math.abs(p.x)<=HW+0.005 && Math.abs(p.z)<=HL+0.005){
+    p.y=T.H+R; v.y=-v.y*P.REST_TABLE;
+    const s=spinScalar(b); _h.set(v.x,0,v.z).normalize(); const dv=P.SPIN_FRICTION*R*s;
+    v.x+=_h.x*dv; v.z+=_h.z*dv; v.y*=clamp(1-s*0.0008, 0.75, 1.2); w.multiplyScalar(P.SPIN_DECAY_BOUNCE);
+    ev&&ev.push({type:'table', side:p.z>=0?1:-1, p:p.clone()});
+  }
+  if(p.y-R<=0 && v.y<0){ p.y=R; v.y=-v.y*P.REST_FLOOR; v.x*=0.8; v.z*=0.8; w.multiplyScalar(0.5); b.floorBounces++; ev&&ev.push({type:'floor', n:b.floorBounces, p:p.clone()}); if(Math.abs(v.y)<0.4){ v.y=0; if(b.floorBounces>5) b.resting=true; } }
+}
+function simulate(b0, maxT, forceNet=false, path=null, legacy=false){
+  const b={p:b0.p.clone(), v:b0.v.clone(), w:b0.w.clone(), floorBounces:0, netDone:false, resting:false};
+  const ev=[], cross=[], tb=[]; let minNetY=Infinity, netT=Infinity; const dt=CONFIG.PHYS.DT, Hc=T.H+CONFIG.PHYS.BALL_R;
+  for(let t=0;t<maxT;t+=dt){ const py=b.p.y, pz=b.p.z; const n0=ev.length; stepBall(b,dt,ev,forceNet);
+    for(let i=n0;i<ev.length;i++){ ev[i].t=t; if(ev[i].type==='net') netT=Math.min(netT,t); if(ev[i].type==='table'){ tb.push({x:ev[i].p.x, z:ev[i].p.z, t, side:ev[i].side}); if(!legacy) cross.push({x:ev[i].p.x, z:ev[i].p.z, t}); } }
+    if(b.v.y<0 && py>Hc && b.p.y<=Hc) cross.push({x:b.p.x, z:b.p.z, t});
+    if((pz>0)!==(b.p.z>0)) minNetY=Math.min(minNetY, b.p.y-CONFIG.PHYS.BALL_R);
+    if(path) path.push({t, p:b.p.clone()});
+    if(b.resting || b.floorBounces>=1) break; }
+  return {ev, cross, tb, minNetY, netT, b};
+}
+function solveVy(pos, vh, w, tz, crossIdx, side, serve, aiServe){
+  const mt=-side*tz; let lo=-2, hi=7, res=null;
+  const metric=(vy)=>{ const r=simulate({p:pos, v:new THREE.Vector3(vh.x,vy,vh.z), w}, 2.5, false, null, serve&&!aiServe);
+    if(aiServe){ const c=r.tb[1]; if(r.netT!==Infinity && (!c || r.netT<c.t)) return {m:-10, r}; if(!r.tb[0] || r.tb[0].side!==side) return {m:-10, r}; if(!c) return {m:10, r}; return {m:-side*c.z, r, c}; }
+    const c=r.cross[crossIdx];
+    if (r.netT !== Infinity && (!c || r.netT < c.t)) return {m:-10, r}; if(!c) return {m:10, r}; if(serve){ const c0=r.cross[0]; if(Math.sign(c0.z)!==side) return {m:10, r}; } return {m:-side*c.z, r, c}; };
+  for(let i=0;i<14;i++){ const mid=(lo+hi)/2; res=metric(mid); res.vy=mid; if(res.m<mt) lo=mid; else hi=mid; }
+  const ok = res.c && Math.abs(res.m-mt)<0.2 && res.r.netT===Infinity && res.r.minNetY > T.H+T.NET_H+0.015;
+  return { ok, v:new THREE.Vector3(vh.x,res.vy,vh.z) };
+}
+function planShot(pos, side, tech, course, power, grade, serve, aiServe, forceOk){
+  const S=CONFIG.SHOT[tech]; let speed=lerp(S.minSpeed,S.maxSpeed,power); if(grade==='GOOD') speed*=CONFIG.GOOD_PENALTY.SPEED; if(serve) speed=Math.min(speed*0.75, 5.5);
+  const err = grade==='PERFECT'?0 : grade==='GREAT'?CONFIG.GREAT_ERROR : CONFIG.GOOD_PENALTY.ERROR;
+  const tx = clamp(side*course*HW*0.7 + rand(-err,err)*1.3, -(HW-0.1), HW-0.1);
+  const tz = -side*clamp(HL*(serve?0.72:S.depth) + rand(-err,err), 0.25, HL-0.15);
+  const dirH=new THREE.Vector3(tx-pos.x,0,tz-pos.z).normalize();
+  const w=new THREE.Vector3().crossVectors(UP,dirH).multiplyScalar(S.spin*(0.6+0.6*power)); w.y+=rand(-25,25);
+  if(aiServe){ let bs=null, be=1e9; const mt=-side*tz, base=speed;
+    const lists=[[0.6,0.7,0.8,0.9,1,1.1,1.2].map(k=>base*k), [2.6,3.2,3.8,4.5,5.2,5.8]];
+    for(const list of lists){ for(const sp of list) for(let vy=-1.5; vy<=3.5; vy+=0.1){ const v=dirH.clone().multiplyScalar(sp); v.y=vy;
+      const r=simulate({p:pos, v, w}, 2.5); if(r.netT!==Infinity || r.minNetY<=T.H+T.NET_H+0.015) continue;
+      const q0=r.tb[0], q1=r.tb[1]; if(!q0||!q1||q0.side!==side||q1.side!==-side) continue;
+      const e=Math.abs(-side*q1.z-mt)+0.4*Math.abs(sp-base); if(e<be){ be=e; bs=v.clone(); } }
+      if(bs) break; }
+    if(bs) return { v:bs, w, speed:bs.length(), target:{x:tx,z:tz} }; }
+  let best=null, last=null;
+  for(let i=0;i<5;i++){ const vh=dirH.clone().multiplyScalar(speed); last=solveVy(pos,vh,w,tz,serve?1:0,side,serve,aiServe); if(last.ok){ best=last; break; } speed*=0.86; }
+  if(!best) best=last;
+  if(!serve){
+    const landsOk=(vv)=>{ const r=simulate({p:pos, v:vv, w}, 3); if(r.netT!==Infinity) return false; const q=r.ev.find(e=>e.type==='table'); return !!q && q.side===-side; };
+    const PF={drive:{GREAT:0.10,GOOD:0.15},cut:{GREAT:0.03,GOOD:0.05},touch:{GREAT:0.05,GOOD:0.08}}; const pf=(PF[tech]&&PF[tech][grade])||0;
+    if(forceOk!==true && forceOk!==2 && Math.random()<pf){
+      let fv=best.v.clone();
+      for(let k=0;k<8;k++){ const v=best.v.clone(); if(Math.random()<0.5){ const f=1.25+0.1*k; v.x*=f; v.z*=f; } else { v.y-=0.8+0.2*k; } fv=v; if(!landsOk(v)) break; }
+      return { v:fv, w, speed:fv.length(), target:{x:tx,z:tz} };
+    }
+    if(forceOk!==2 && !landsOk(best.v)) return planShot(pos, side, tech, course, power, 'PERFECT', serve, aiServe, 2);
+  }
+  return { v:best.v, w, speed:best.v.length(), target:{x:tx,z:tz} };
+}
+
+const G = { screen:'title', mode:null, mySide:1, diff:null, score:{1:0,'-1':0}, firstServer:1, paused:false, stats:null, chars:{}, names:{1:'',"-1":''}, weak:null, myCfg:null, oppCfg:null, rematch:{me:false,op:false} };
+let R = { phase:'idle' };
+let simTime = 0;
+const SETTINGS = Object.assign({ volume:0.8, muted:false, quality:'mid', offset:0 }, store.get('rpp_settings', {}));
+const chars = G.chars;
+function resetStats(){ G.stats={PERFECT:0,GREAT:0,GOOD:0,MISS:0,combo:0,maxCombo:0,maxSpeed:0}; G.weak={'-1':{s:0,n:0},'0':{s:0,n:0},'1':{s:0,n:0}}; }
+function aiWin(side, win){ if(G.mode!=='ai' || side===G.mySide) return win; const m=CONFIG.AI[G.diff].winMul||1; return Math.min(1.8, Math.max(0.25, win*m)); }
+function computeWindow(grade, speed){ const W=CONFIG.WINDOW; return clamp(W.BASE*(W.MUL[grade]||1)*clamp(W.SPEED_REF/Math.max(1,speed),0.7,1.3), W.MIN, W.MAX); }
+function setupCharacters(myCfg, oppCfg){
+  for(const k in chars){ scene.remove(chars[k].group); delete chars[k]; }
+  const me=makeCharacter(myCfg), op=makeCharacter(oppCfg); chars[G.mySide]=me; chars[-G.mySide]=op; scene.add(me.group); scene.add(op.group);
+  charSetSide(me, G.mySide); charSetSide(op, -G.mySide); G.names[G.mySide]=myCfg.name; G.names[-G.mySide]=oppCfg.name;
+  $('#nmMe').textContent=myCfg.name; $('#nmOp').textContent=oppCfg.name; VIEW.side=G.mySide; SFX.viewSide=G.mySide;
+}
+function startMatch(){
+  G.score={1:0,'-1':0}; resetStats(); G.rematch={me:false,op:false}; G.firstServer = 1;
+  G.screen='playing'; G.paused=false; hideAllScreens(); show('#hud'); $('#emotes').classList.toggle('hidden', G.mode!=='multi'); $('#ping').classList.toggle('hidden', G.mode!=='multi'); $('#btnPause').classList.toggle('hidden', G.mode==='multi'); $('#score').classList.toggle('hidden', G.mode==='practice'); $('#btnPracticeSet').classList.toggle('hidden', G.mode!=='practice'); $('#practiceInfo').classList.toggle('hidden', G.mode!=='practice');
+  updateScore(); if(G.mode==='ai'){ setHardcoreLook(G.diff==='grand'); SFX.tensionStop(); } else { setHardcoreLook(false); SFX.tensionStop(); }
+  camera.position.set(0, CONFIG.CAMERA.HEIGHT, G.mySide*CONFIG.CAMERA.DIST);
+  if(G.mode==='practice') practiceStart(); else if(G.mode!=='multi' || NET.isHost) nextServe(true);
+}
+function nextServe(first){
+  const total=G.score[1]+G.score[-1]; const server=(Math.floor(total/CONFIG.SERVE_SWITCH)%2===0)? G.firstServer : -G.firstServer;
+  if(G.mode==='multi' && NET.isHost) NET.send({t:'serve', server, score:G.score});
+  beginServe(server);
+}
+function beginServe(server){
+  R={ phase:'serve', server, lastHitter:server, needOwnBounce:true, bounces:0, incoming:null, tossAt:simTime+0.9, tossed:false, ai:null };
+  ball.p.set(server*0.3, 1.0, server*(HL+0.35)); ball.v.set(0,0,0); ball.w.set(0,0,0); ball.active=true; ball.held=true; ball.floorBounces=0; ball.netDone=false; ball.netFlag=false; ball.resting=false;
+  for(const k in chars){ const c=chars[k]; c.targetX=0; c.targetZ=c.side*(HL+0.6); c.state='idle'; c.scratch=false; }
+  updateScore(); hideRhythm();
+  showMsg(server===G.mySide? '내 서브' : '상대 서브', 1.0);
+  $('#hint').textContent = server===G.mySide ? '원 위치에서 시작해 겹칠 때 드래그로 서브! ↑드라이브 ↓커트 ·탭=터치' : '공이 오면 원이 나타납니다';
+}
+function doToss(){
+  R.tossed=true; ball.held=false; ball.v.set(0,4.2,0);
+  const path=[]; simulate(ball, 2.0, false, path); let hit=null; for(const q of path){ if(q.t>0.3 && q.p.y<=1.02 && q.p.y>0.9){ hit=q; break; } }
+  if(!hit) hit={t:0.85, p:ball.p.clone()};
+  const win=CONFIG.WINDOW.BASE; R.incoming={ side:R.server, t:simTime+hit.t, pos:hit.p.clone(), window:win, start:simTime+hit.t-win, done:false };
+  if(G.mode==='ai' && R.server===-G.mySide) aiPlan();
+}
+function computeIncoming(side, windowSec){
+  const path=[]; const r=simulate(ball, 3.5, ball.netFlag, path);
+  let tB=null, tSecond=null, tFloor=null, ownSeen=false;
+  for(const e of r.ev){
+    if(e.type==='net') return null;
+    if(e.type==='table'){ if(e.side===side){ if(tB===null) tB=e.t; else { tSecond=e.t; break; } } else { if(R.needOwnBounce && !ownSeen && tB===null) ownSeen=true; else return null; } }
+    if(e.type==='floor'){ tFloor=e.t; break; }
+  }
+  if(tB===null) return null;
+  const planeZ=HL+CONFIG.HIT_PLANE; let hitT=null, hitP=null;
+  for(const q of path){ if(q.t<=tB) continue; if(side*q.p.z>=planeZ){ hitT=q.t; hitP=q.p; break; } }
+  if(hitT===null){ const tEnd = tSecond!==null? tSecond-0.06 : tFloor!==null? tFloor-0.12 : null; if(tEnd===null) return null;
+    for(const q of path){ if(q.t>=tEnd){ hitT=q.t; hitP=q.p; break; } } if(!hitP){ const q=path[path.length-1]; hitT=q.t; hitP=q.p; } }
+  hitP=hitP.clone(); if(hitP.y<T.H+0.04) hitP.y=T.H+0.06;
+  return { side, t:simTime+hitT, pos:hitP, window:windowSec, start:simTime+hitT-windowSec, done:false };
+}
+function doHit(side, o){
+  const serve = R.phase==='serve';
+  const pos = (R.incoming && R.incoming.side===side)? R.incoming.pos.clone() : ball.p.clone();
+  const plan = planShot(pos, side, o.tech, o.course, o.power, o.grade, serve, serve, o.lucky?true:false);
+  if(serve && Math.random()<0.01){
+    const okServe=(vv)=>{ const r=simulate({p:pos, v:vv, w:plan.w}, 3); if(r.netT!==Infinity) return false; const t=r.ev.filter(e=>e.type==='table'); return !!(t[0]&&t[0].side===side&&t[1]&&t[1].side===-side); };
+    let fv=plan.v.clone();
+    for(let k=0;k<8;k++){ const v=plan.v.clone(); if(Math.random()<0.5){ const f=1.3+0.1*k; v.x*=f; v.z*=f; } else { v.y-=0.8+0.2*k; } fv=v; if(!okServe(v)) break; }
+    plan.v=fv; plan.speed=fv.length();
+  }
+  applyHitState(side, pos, plan.v, plan.w, o.tech, o.grade, o.netFlag!==undefined? o.netFlag : Math.random()<CONFIG.NET_CHANCE, serve, aiWin(side, computeWindow(o.grade, plan.speed)), plan.speed);
+  if(G.mode==='multi' && side===G.mySide) NET.send({ t:'hit', side, p:ball.p.toArray(), v:ball.v.toArray(), w:ball.w.toArray(), tech:o.tech, grade:o.grade, net:ball.netFlag, win:R.hitWindow, serve, speed:plan.speed, ts:Date.now() });
+}
+function applyHitState(side, pos, v, w, tech, grade, netFlag, serve, win, speed){
+  ball.p.copy(pos); ball.v.copy(v); ball.w.copy(w); ball.netDone=false; ball.floorBounces=0; ball.held=false; ball.active=true; ball.resting=false; ball.netFlag=netFlag;
+  R.phase='rally'; R.lastHitter=side; R.bounces=0; R.needOwnBounce=serve; R.serveShot=serve; R.hitWindow=win; R.ai=null; hideRhythm();
+  R.incoming = computeIncoming(-side, win);
+  const ch=chars[side]; if(ch){ const hand=(pos.x-ch.group.position.x)*side>=-0.05?'fore':'back'; charSwing(ch, tech, hand, 0.3); }
+  SFX.hit(speed, grade==='PERFECT', pos.x); if(speed>CONFIG.CAMERA.SHAKE_SPEED) VIEW.shake=clamp((speed-9)/6,0,1);
+  if(side===G.mySide) G.stats.maxSpeed=Math.max(G.stats.maxSpeed, speed);
+  if(G.mode==='ai' && R.incoming && R.incoming.side===-G.mySide) aiPlan();
+  if(R.incoming && chars[R.incoming.side]){ const rc=chars[R.incoming.side]; rc.targetX = R.incoming.pos.x - rc.side*0.12; const inZ=rc.side*R.incoming.pos.z; rc.targetZ = inZ < HL+0.2 ? R.incoming.pos.z + rc.side*0.5 : rc.side*(HL+0.6); }
+}
+function doMiss(side, tech){
+  if(R.phase==='end') return; const ch=chars[side]; if(ch) charSwing(ch, tech||'drive', 'fore', 0.3);
+  if(R.incoming && R.incoming.side===side) R.incoming.done=true; hideRhythm();
+  if(side===G.mySide && G.mode==='multi' && !NET.isHost){ NET.send({t:'miss'}); return; }
+  endRally(-side, side===G.mySide?'헛스윙':'상대 헛스윙');
+}
+function ruleEnd(winner, reason){ if(G.mode==='multi' && !NET.isHost) return; endRally(winner, reason); }
+function processEvents(ev){
+  for(const e of ev){
+    if(e.type==='table'){ SFX.tableBounce(e.p.x); if(R.phase==='rally') onTableBounce(e.side); }
+    else if(e.type==='floor'){ SFX.floorBounce(e.p.x, e.n); if(e.n===1){ if(R.phase==='rally') onFloor(); else if(R.phase==='serve') ruleEnd(-R.server, '서브 실패'); } }
+    else if(e.type==='net'){ SFX.net(e.p.x); VIEW.shake=Math.max(VIEW.shake,0.3); R.netHit=true; }
+  }
+}
+function onTableBounce(side){
+  if(R.needOwnBounce){ if(side===R.lastHitter) R.needOwnBounce=false; else ruleEnd(-R.lastHitter,'서브 폴트'); return; }
+  if(side===R.lastHitter){ ruleEnd(-R.lastHitter, R.netHit?'네트':'자기 코트 바운드'); return; }
+  R.bounces++; if(R.bounces>=2){ if(R.serveShot) ruleEnd(-R.lastHitter,'서브 투바운드'); else ruleEnd(R.lastHitter,'투 바운드'); }
+}
+function onFloor(){ if(R.bounces>=1 && !R.needOwnBounce) ruleEnd(R.lastHitter,'리턴 실패'); else ruleEnd(-R.lastHitter, R.netHit?'네트':'아웃'); }
+function matchOver(){ const a=G.score[1], b=G.score[-1], W=CONFIG.WIN_SCORE; const mx=Math.max(a,b); if(mx<W) return false; return CONFIG.DEUCE ? Math.abs(a-b)>=2 : true; }
+function endRally(winner, reason, fromNet){
+  if(R.phase==='end') return; R.phase='end'; R.incoming=null; R.ai=null; hideRhythm();
+  if(G.mode==='practice'){ R.nextFeedAt=simTime+((G.practice&&G.practice.gap)||1.4); return; }
+  G.score[winner]++; updateScore();
+  const win=winner===G.mySide; showMsg(win?`득점! <small>${reason}</small>`:`실점 <small>${reason}</small>`, 1.8, win?'#ffd54a':'#ff8080');
+  SFX.point(win); if(win){ SFX.cheer(0.8); if(crowd) crowd.excite=1; } else if(crowd) crowd.excite=0.4;
+  if(chars[winner]) charState(chars[winner],'celebrate',1.7); if(chars[-winner]){ charState(chars[-winner],'sad',1.7); if(G.mode==='ai' && -winner===-G.mySide && CONFIG.AI[G.diff].scratch) chars[-winner].scratch=true; }
+  if(G.mode==='ai'){ const prof=CONFIG.AI[G.diff]; if(Math.random()<0.6) showBubble('op', choice(prof.lines), 2.2); }
+  if(G.mode==='multi' && NET.isHost && !fromNet) NET.send({t:'point', winner, reason, score:G.score});
+  setTimeout(()=>{ if(G.screen!=='playing') return; if(matchOver()) showResult(); else if(G.mode!=='multi' || NET.isHost) nextServe(); }, 2100);
+}
+function physicsStep(dt){
+  if(R.phase==='serve' && !R.tossed && simTime>=R.tossAt) doToss();
+  if(ball.active && !ball.held){ const ev=[]; stepBall(ball, dt, ev, ball.netFlag); if(ev.length) processEvents(ev); }
+  const inc=R.incoming; if(inc && inc.side===G.mySide && !inc.done && simTime>inc.t+CONFIG.JUDGE.GOOD/1000 && (R.phase==='rally'||R.phase==='serve')){ inc.done=true; registerJudge('MISS', 0); doMiss(G.mySide); }
+  if(G.mode==='ai') aiUpdate();
+  if(G.mode==='practice') practiceUpdate();
+  simTime+=dt;
+}
+
+let machine=null;
+function buildMachine(){
+  const g=new THREE.Group(); const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:0.6}, o));
+  const add=(geo,mat,x,y,z,parent=g)=>{ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.castShadow=true; parent.add(m); return m; };
+  const body=M(0x2b3550), acc=M(0xffb020, {emissive:0x442200, emissiveIntensity:0.4});
+  add(new THREE.CylinderGeometry(0.3,0.3,0.04,20), body, 0,0.02,0);
+  add(new THREE.CylinderGeometry(0.04,0.05,0.8,10), body, 0,0.42,0);
+  add(new THREE.BoxGeometry(0.3,0.26,0.4), body, 0,0.95,0);
+  add(new THREE.CylinderGeometry(0.15,0.08,0.22,14), acc, 0,1.19,-0.05);
+  const barrel=add(new THREE.CylinderGeometry(0.05,0.06,0.3,14), M(0x111111), 0,0.98,0.3); barrel.rotation.x=Math.PI/2;
+  add(new THREE.SphereGeometry(0.03,8,8), M(0xff3030,{emissive:0xff0000,emissiveIntensity:0.8}), 0.1,1.1,0.2);
+  g.position.set(0,0,-(CONFIG.TABLE.L/2+0.88)); g.visible=false; scene.add(g);
+  machine={group:g, barrel, kick:0};
+}
+function setupPractice(){
+  for(const k in chars){ scene.remove(chars[k].group); delete chars[k]; }
+  const me=makeCharacter(G.myCfg); chars[1]=me; scene.add(me.group); charSetSide(me,1);
+  G.names[1]=G.myCfg.name; $('#nmMe').textContent=G.myCfg.name; VIEW.side=1; SFX.viewSide=1;
+}
+const PGAP={short:0.7, mid:1.4, long:2.5};
+function readPractice(){ return { type:$('#pType').value, speed:$('#pSpeed').value, course:$('#pCourse').value, gap:+$('#pGap').value||1.4 }; }
+function openPracticeSettings(live){
+  const P=G.practice; if(P){ $('#pType').value=P.type; $('#pSpeed').value=P.speed; $('#pCourse').value=P.course||'rand'; $('#pGap').value=P.gap; }
+  $('#pGapV').textContent=(+$('#pGap').value).toFixed(1)+'초';
+  $('#pRowStart').classList.toggle('hidden', !!live); $('#pRowLive').classList.toggle('hidden', !live);
+  if(live) G.paused=true; show('#scrPractice');
+}
+function practiceStart(){
+  R={phase:'end', nextFeedAt:simTime+1.2}; ball.active=false; if(machine) machine.group.visible=true;
+  $('#hint').textContent='기계가 보내는 공을 계속 쳐보세요! 원이 겹칠 때 드래그';
+  showMsg('연습 시작!', 1.0); updatePractice();
+}
+function updatePractice(){ const S=G.stats; $('#practiceInfo').innerHTML=`🎯 연습 모드 &nbsp; <span class="P">P ${S.PERFECT}</span> <span class="G">G ${S.GREAT}</span> <span class="O">O ${S.GOOD}</span> <span class="M">M ${S.MISS}</span>`; }
+function practiceUpdate(){
+  if(R.phase==='end'){ if(R.nextFeedAt!==undefined && simTime>=R.nextFeedAt) feedBall(); }
+  else if(R.phase==='rally' && simTime-R.feedT>8){ R.phase='end'; R.incoming=null; hideRhythm(); R.nextFeedAt=simTime+0.5; }
+}
+function feedBall(){
+  if(G.screen!=='playing' || G.mode!=='practice') return;
+  const side=-G.mySide, P=G.practice||{type:'mix',speed:'mid'};
+  const tech = P.type==='mix'? weighted({drive:0.45,cut:0.35,touch:0.2}) : P.type;
+  const rng = {slow:[0.1,0.3], mid:[0.35,0.6], fast:[0.65,0.9]}[P.speed] || [0.35,0.6];
+  const power=rand(rng[0],rng[1]); let course;
+  if(P.course==='left') course=rand(0.6,0.95); else if(P.course==='right') course=rand(-0.95,-0.6); else if(P.course==='center') course=rand(-0.15,0.15);
+  else if(P.course==='alt'){ G.pAlt=!G.pAlt; course=G.pAlt? rand(0.6,0.95) : rand(-0.95,-0.6); } else course=rand(-0.9,0.9);
+  const pos=new THREE.Vector3(0, rand(0.98,1.04), side*(HL+0.45));
+  const plan=planShot(pos, side, tech, course, power, 'PERFECT', false, false, false);
+  R={ phase:'rally', lastHitter:side, needOwnBounce:false, bounces:0, incoming:null, ai:null, feedT:simTime, serveShot:false };
+  applyHitState(side, pos, plan.v, plan.w, tech, 'GOOD', false, false, computeWindow('GOOD', plan.speed), plan.speed);
+  if(machine){ machine.group.rotation.y=Math.atan2(plan.target.x-machine.group.position.x, plan.target.z-machine.group.position.z); machine.kick=1; }
+}
+
+const rhythmEl=$('#rhythm'), targetEl=$('#target'), approachEl=$('#approach'); const _proj=new THREE.Vector3();
+function hideRhythm(){ rhythmEl.classList.add('hidden'); }
+function updateRhythm(){
+  const inc=R.incoming; const me=chars[G.mySide];
+  if(!inc || inc.side!==G.mySide || inc.done || G.screen!=='playing' || simTime<inc.start-0.05){ hideRhythm(); if(me && me.state==='ready') me.state='idle'; return; }
+  rhythmEl.classList.remove('hidden'); if(me && me.state==='idle' && !me.swing) me.state='ready';
+  _proj.copy(inc.pos).project(camera); const sx=(_proj.x+1)/2*innerWidth, sy=(1-_proj.y)/2*innerHeight;
+  tgtScr.x=sx; tgtScr.y=sy; targetEl.style.left=sx+'px'; targetEl.style.top=sy+'px'; approachEl.style.left=sx+'px'; approachEl.style.top=sy+'px';
+  targetEl.classList.toggle('serve', R.phase==='serve');
+  const k=clamp((inc.t-simTime)/inc.window,0,1); const size=78*(1+3.2*k); approachEl.style.width=size+'px'; approachEl.style.height=size+'px';
+  const err=Math.abs(inc.t-simTime)*1000; const ac = err<=CONFIG.JUDGE.PERFECT?'#4da3ff' : err<=CONFIG.JUDGE.GREAT?'#4cd964' : err<=CONFIG.JUDGE.GOOD?'#ffd54a' : '#ff3b3b'; approachEl.style.borderColor=ac; approachEl.style.boxShadow='0 0 12px '+ac;
+  approachEl.style.opacity = simTime>inc.t? String(clamp(1-(simTime-inc.t)/0.2,0,1)) : '1';
+}
+function registerJudge(grade, course){
+  const S=G.stats; S[grade]++; if(grade==='MISS') S.combo=0; else { S.combo++; S.maxCombo=Math.max(S.maxCombo,S.combo); }
+  const inc=R.incoming; if(inc){ const k=Math.sign(Math.round(inc.pos.x*G.mySide*2)); const w=G.weak[String(k)]; w.n++; w.s+= grade==='PERFECT'?1: grade==='GREAT'?0.7: grade==='GOOD'?0.4:0; }
+  const je=$('#judge'); je.textContent=grade; je.className=''; je.classList.add({PERFECT:'P',GREAT:'G',GOOD:'O',MISS:'M'}[grade]); void je.offsetWidth; je.classList.add('pop');
+  $('#combo').textContent = S.combo>=2? `${S.combo} COMBO` : ''; SFX.judge(grade); if(G.mode==='practice') updatePractice();
+}
+let ptr=null; const TOUCH_R=55, tgtScr={x:0,y:0};
+addEventListener('pointerdown', e=>{ SFX.init(); SFX.resume(); if(e.target!==renderer.domElement) return; if(G.screen!=='playing'||G.paused) return; const inc=R.incoming; if(inc && inc.side===G.mySide && !inc.done && simTime>=inc.start-0.05 && Math.hypot(e.clientX-tgtScr.x, e.clientY-tgtScr.y)>TOUCH_R) return; ptr={x:e.clientX,y:e.clientY,t:performance.now()}; });
+addEventListener('pointerup', e=>{ if(!ptr) return; const a=ptr; ptr=null; if(G.screen!=='playing'||G.paused) return; handleSwipe(a,{x:e.clientX,y:e.clientY,t:performance.now()}); });
+addEventListener('pointercancel', ()=>{ ptr=null; });
+function handleSwipe(a,b){
+  const I=CONFIG.INPUT; const dx=b.x-a.x, dy=b.y-a.y, dur=Math.max(1,b.t-a.t), dist=Math.hypot(dx,dy); const norm=720/Math.min(innerWidth,innerHeight);
+  let tech, course, power;
+  if(dist<I.TAP_PX && dur<I.TAP_MS){ tech='touch'; course=0; power=0.5; }
+  else { tech = dy<0?'drive':'cut'; course=clamp(dx*norm/220,-1,1); const spd=dist*norm/dur; power=clamp((spd-I.SPEED_MIN)/(I.SPEED_MAX-I.SPEED_MIN),0,1); }
+  const inc=R.incoming;
+  if(!inc || inc.side!==G.mySide || inc.done || simTime<inc.start){ if(chars[G.mySide]) charSwing(chars[G.mySide], tech, dx*G.mySide>=0?'fore':'back', 0.3); return; }
+  const inputSim = simTime - (performance.now()-b.t)/1000 + SETTINGS.offset/1000;
+  const ae=Math.abs(inputSim-inc.t)*1000, J=CONFIG.JUDGE;
+  const grade = ae<=J.PERFECT?'PERFECT': ae<=J.GREAT?'GREAT': ae<=J.GOOD?'GOOD':'MISS';
+  inc.done=true; registerJudge(grade, course);
+  if(grade==='MISS'){ if(Math.random()<0.05) doHit(G.mySide, {tech, course, power, grade:'GOOD', lucky:true}); else doMiss(G.mySide, tech); return; }
+  doHit(G.mySide, {tech, course, power, grade});
+}
+
+function aiPlan(){
+  const prof=CONFIG.AI[G.diff]; const inc=R.incoming; if(!inc) return;
+  const gr=Object.assign({}, prof.grades); const pressure=Math.max(0,(1.0-inc.window))*prof.pressure; gr.MISS=clamp(gr.MISS+pressure,0,0.9);
+  const sum=gr.PERFECT+gr.GREAT+gr.GOOD, sc=(1-gr.MISS)/sum; gr.PERFECT*=sc; gr.GREAT*=sc; gr.GOOD*=sc;
+  const grade=weighted(gr); let tech=weighted(prof.tech);
+  if(prof.fake && R.aiLastTech==='drive' && Math.random()<0.5) tech='cut';
+  R.aiLastTech=tech;
+  let course; if(prof.course==='center') course=rand(-0.15,0.15); else if(prof.course==='sides') course=choice([-0.8,-0.45,0,0.45,0.8])+rand(-0.1,0.1); else course=weakCourse()+rand(-0.12,0.12);
+  const power=rand(prof.power[0],prof.power[1]);
+  R.ai={grade, tech, course, power, hitAt:inc.t, done:false, fake: !!prof.fake && Math.random()<0.5};
+}
+function weakCourse(){ const W=G.weak; let worst=choice([-1,1]), worstV=Infinity; for(const k of [-1,0,1]){ const w=W[String(k)]; const v=w.n? w.s/w.n + rand(-0.08,0.08) : 0.5+Math.random()*0.3; if(v<worstV){ worstV=v; worst=k; } } return -worst*0.85; }
+function aiUpdate(){
+  const ai=R.ai; if(!ai||ai.done) return; const aiSide=-G.mySide, ch=chars[aiSide];
+  if(ai.fake && simTime>ai.hitAt-0.6 && simTime<ai.hitAt-0.25) ch.fakeUntil=performance.now()/1000+0.06;
+  if(simTime>=ai.hitAt){ ai.done=true; const inc=R.incoming; if(!inc||inc.side!==aiSide||inc.done) return; inc.done=true;
+    if(ai.grade==='MISS'){ if(Math.random()<0.05) doHit(aiSide, Object.assign({}, ai, {grade:'GOOD', lucky:true})); else charSwing(ch, ai.tech, 'fore', 0.3); return; }
+    doHit(aiSide, ai); }
+}
+
+const NET = {
+  peer:null, conn:null, isHost:false, code:'', rtt:0, connected:false, pingTimer:null,
+  host(){
+    this.cleanup(); this.isHost=true; this.code=String(Math.floor(100000+Math.random()*900000));
+    if(typeof Peer==='undefined'){ $('#lobbyStatus').textContent='멀티플레이를 사용할 수 없습니다'; return; }
+    this.peer=new Peer('rpp3d-'+this.code);
+    this.peer.on('open',()=>{ $('#roomCode').textContent=this.code; $('#lobbyStatus').textContent='상대를 기다리는 중…'; });
+    this.peer.on('connection',c=>{ if(this.conn){ c.close(); return; } this.bind(c); });
+    this.peer.on('error',e=>{ $('#lobbyStatus').textContent='연결 오류: '+e.type; if(e.type==='unavailable-id') this.host(); });
+  },
+  join(code){
+    this.cleanup(); this.isHost=false; this.code=code;
+    if(typeof Peer==='undefined'){ $('#lobbyStatus').textContent='멀티플레이를 사용할 수 없습니다'; return; }
+    this.peer=new Peer();
+    $('#lobbyStatus').textContent='연결 중…';
+    this.peer.on('open',()=>{ this.bind(this.peer.connect('rpp3d-'+code,{reliable:true})); });
+    this.peer.on('error',e=>{ $('#lobbyStatus').textContent='연결 실패: '+e.type; });
+  },
+  bind(c){
+    this.conn=c;
+    c.on('open',()=>{ this.connected=true; this.send({t:'hello', char:G.myCfg}); $('#lobbyStatus').textContent='연결됨! 캐릭터 교환 중…';
+      this.pingTimer=setInterval(()=>this.send({t:'ping', ts:Date.now()}),1500); });
+    c.on('data',m=>this.onMessage(m));
+    c.on('close',()=>this.onDrop()); c.on('error',()=>this.onDrop());
+  },
+  send(o){ if(this.conn&&this.conn.open) this.conn.send(o); },
+  onDrop(){ if(!this.connected && !this.conn) return; this.cleanup(); SFX.tensionStop();
+    notice('상대와의 연결이 끊어졌습니다.', ()=>gotoScreen('mode')); },
+  cleanup(){ clearInterval(this.pingTimer); this.pingTimer=null; this.connected=false;
+    try{ this.conn&&this.conn.close(); }catch(e){} try{ this.peer&&this.peer.destroy(); }catch(e){} this.conn=null; this.peer=null; },
+  onMessage(m){
+    switch(m.t){
+      case 'ping': this.send({t:'pong', ts:m.ts}); break;
+      case 'pong': this.rtt=Date.now()-m.ts; $('#ping').textContent=`ping ${this.rtt}ms`; break;
+      case 'hello': G.oppCfg=m.char; G.mySide=this.isHost?1:-1; setupCharacters(G.myCfg, G.oppCfg);
+        if(this.isHost){ setTimeout(()=>{ this.send({t:'start'}); startMatch(); },600); } break;
+      case 'start': startMatch(); break;
+      case 'serve': G.score=m.score; beginServe(m.server); break;
+      case 'hit': {
+        if(R.phase==='end') break;
+        const p=new THREE.Vector3().fromArray(m.p), v=new THREE.Vector3().fromArray(m.v), w=new THREE.Vector3().fromArray(m.w);
+        applyHitState(m.side, p, v, w, m.tech, m.grade, m.net, m.serve, m.win, m.speed);
+        const lag=clamp(this.rtt/2000, 0, 0.4); const steps=Math.floor(lag/CONFIG.PHYS.DT);
+        for(let i=0;i<steps;i++){ const ev=[]; stepBall(ball, CONFIG.PHYS.DT, ev, ball.netFlag); if(ev.length) processEvents(ev); }
+        if(R.incoming){ R.incoming.t-=lag; R.incoming.start-=lag; }
+        break; }
+      case 'miss': if(this.isHost) endRally(G.mySide, '상대 헛스윙'); break;
+      case 'point': if(!this.isHost){ G.score=Object.assign({},m.score); G.score[m.winner]--; endRally(m.winner, m.reason, true); } break;
+      case 'emote': showBubble('op', m.e, 1.8); break;
+      case 'rematch': G.rematch.op=m.want; updateRematch(); break;
+      case 'restart': hideAllScreens(); startMatch(); break;
+    }
+  }
+};
+
+const SCREENS=['#scrTitle','#scrCustom','#scrMode','#scrDiff','#scrLobby','#scrPractice','#scrResult','#scrPause','#scrSettings','#scrTut','#notice'];
+function hideAllScreens(){ SCREENS.forEach(hide); }
+function gotoScreen(name){
+  hideAllScreens(); hide('#hud'); hideRhythm(); G.paused=false; if(machine) machine.group.visible=false;
+  if(name!=='playing'){ G.screen=name; R={phase:'idle'}; ball.active=false; }
+  if(name==='title') show('#scrTitle');
+  if(name==='custom'){ show('#scrCustom'); loadCustomForm(); }
+  if(name==='mode'){ show('#scrMode'); NET.cleanup(); SFX.tensionStop(); setHardcoreLook(false); }
+  if(name==='diff') show('#scrDiff');
+  if(name==='practice') openPracticeSettings(false);
+  if(name==='lobby'){ show('#scrLobby'); show('#lobbyMenu'); hide('#lobbyHost'); $('#lobbyStatus').textContent=''; }
+}
+let msgTimer=null;
+function showMsg(html, sec, color){ const m=$('#msg'); m.innerHTML=html; m.style.color=color||'#fff'; clearTimeout(msgTimer); msgTimer=setTimeout(()=>m.innerHTML='', sec*1000); }
+const bubbles={ op:{el:$('#bubbleOp'), until:0}, me:{el:$('#bubbleMe'), until:0} };
+function showBubble(who, text, sec){ const b=bubbles[who]; b.el.textContent=text; b.el.classList.remove('hidden'); b.until=performance.now()/1000+sec; }
+const _bub=new THREE.Vector3();
+function updateBubbles(now){ for(const k in bubbles){ const b=bubbles[k]; if(b.el.classList.contains('hidden')) continue; if(now>b.until){ b.el.classList.add('hidden'); continue; }
+  const ch=chars[k==='me'?G.mySide:-G.mySide]; if(!ch) continue; _bub.copy(ch.group.position); _bub.y+=1.75*ch.h; _bub.project(camera);
+  b.el.style.left=((_bub.x+1)/2*innerWidth)+'px'; b.el.style.top=((1-_bub.y)/2*innerHeight)+'px'; } }
+function notice(text, cb){ $('#noticeText').textContent=text; show('#notice'); $('#btnNoticeOk').onclick=()=>{ hide('#notice'); cb&&cb(); }; }
+function updateScore(){ $('#ptMe').textContent=G.score[G.mySide]; $('#ptOp').textContent=G.score[-G.mySide];
+  $('#srvMe').classList.toggle('on', R.server===G.mySide); $('#srvOp').classList.toggle('on', R.server===-G.mySide); }
+
+const prevCanvas=$('#prev'); const prevR=new THREE.WebGLRenderer({canvas:prevCanvas, antialias:true, alpha:true}); prevR.outputColorSpace=THREE.SRGBColorSpace;
+const prevScene=new THREE.Scene(); const prevCam=new THREE.PerspectiveCamera(40,1,0.1,10); prevCam.position.set(0,1.0,2.7); prevCam.lookAt(0,0.85,0);
+prevScene.add(new THREE.HemisphereLight(0xffffff,0x334466,1.2)); const pl=new THREE.DirectionalLight(0xffffff,1.5); pl.position.set(2,3,2); prevScene.add(pl);
+let prevChar=null, prevRotY=0.3, prevDrag=null, prevW=0;
+function rebuildPreview(){ if(prevChar) prevScene.remove(prevChar.group); prevChar=makeCharacter(G.myCfg); prevScene.add(prevChar.group); }
+prevCanvas.addEventListener('pointerdown',e=>{ prevDrag={x:e.clientX, r:prevRotY}; prevCanvas.setPointerCapture(e.pointerId); });
+prevCanvas.addEventListener('pointermove',e=>{ if(prevDrag) prevRotY=prevDrag.r+(e.clientX-prevDrag.x)*0.015; });
+prevCanvas.addEventListener('pointerup',()=>prevDrag=null);
+function fillSelects(){ $('#cHair').innerHTML=HAIR_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join(''); $('#cAcc').innerHTML=Object.entries(ACC_NAMES).map(([k,v])=>`<option value="${k}">${v}</option>`).join(''); }
+const FORM=[['cName','name'],['cSkin','skin'],['cHair','hair'],['cHairColor','hairColor'],['cTop','top'],['cBottom','bottom'],['cAcc','acc'],['cHeight','height'],['cBulk','bulk'],['cRubber','rubber'],['cRubberColor','rubberColor']];
+function loadCustomForm(){ FORM.forEach(([id,k])=>{ $('#'+id).value=G.myCfg[k]; }); rebuildPreview(); }
+function readCustomForm(){ FORM.forEach(([id,k])=>{ let v=$('#'+id).value; if(k==='hair'||k==='height'||k==='bulk') v=+v; if(k==='name') v=v.trim()||'플레이어'; G.myCfg[k]=v; }); rebuildPreview(); }
+FORM.forEach(([id])=>$('#'+id).addEventListener('input', readCustomForm));
+$('#btnRandom').onclick=()=>{ G.myCfg=randomChar(); loadCustomForm(); };
+$('#btnCustomDone').onclick=()=>{ readCustomForm(); store.set('rpp_char', G.myCfg); gotoScreen('mode'); };
+$('#btnCustomBack').onclick=()=>gotoScreen('title');
+
+$('#btnStart').onclick=()=>{ SFX.init(); gotoScreen(store.get('rpp_char',null)?'mode':'custom'); if(!store.get('rpp_tut',false)) show('#scrTut'); };
+$('#btnTut').onclick=()=>show('#scrTut'); $('#btnTutClose').onclick=()=>{ hide('#scrTut'); store.set('rpp_tut',true); };
+$('#btnModeChar').onclick=()=>gotoScreen('custom'); $('#btnModeTitle').onclick=()=>gotoScreen('title');
+$('#btnModeAI').onclick=()=>gotoScreen('diff'); $('#btnDiffBack').onclick=()=>gotoScreen('mode');
+$('#btnModeMulti').onclick=()=>gotoScreen('lobby'); $('#btnModePractice').onclick=()=>gotoScreen('practice'); $('#btnPracticeBack').onclick=()=>gotoScreen('mode');
+$('#btnPracticeStart').onclick=()=>{ SFX.init(); G.mode='practice'; G.diff=null; G.mySide=1; G.practice=readPractice(); setupPractice(); startMatch(); };
+$('#pGap').oninput=()=>{ $('#pGapV').textContent=(+$('#pGap').value).toFixed(1)+'초'; };
+$('#btnPracticeSet').onclick=()=>{ if(G.mode!=='practice'||G.screen!=='playing') return; openPracticeSettings(true); };
+$('#btnPracticeApply').onclick=()=>{ G.practice=readPractice(); hide('#scrPractice'); G.paused=false; lastT=performance.now(); };
+$('#btnPracticeReset').onclick=()=>{ resetStats(); $('#combo').textContent=''; updatePractice(); $('#btnPracticeReset').textContent='✅ 초기화됨'; setTimeout(()=>$('#btnPracticeReset').textContent='기록 초기화',1200); };
+$('#btnPracticeMenu').onclick=()=>gotoScreen('mode'); $('#btnLobbyBack').onclick=()=>gotoScreen('mode');
+function buildDiffCards(){ $('#diffCards').innerHTML=Object.values(CONFIG.AI).map(a=>`<button class="card" data-d="${a.key}"><div class="ic">${a.icon}</div><b>${a.name}</b><small>${a.desc}</small></button>`).join('');
+  $$('#diffCards .card').forEach(b=>b.onclick=()=>startAI(b.dataset.d)); }
+const AI_CHARS={
+  rally:{name:'랠리',skin:'#d9a06a',hair:0,hairColor:'#777777',top:'#eeeeee',bottom:'#555555',acc:'none',height:0.98,bulk:1.2,rubber:'black',rubberColor:'#000000'},
+  serve:{name:'서브',skin:'#f1c9a5',hair:2,hairColor:'#2b1b12',top:'#86efac',bottom:'#1b2238',acc:'none',height:1.0,bulk:1.0,rubber:'red',rubberColor:'#ff0000'},
+  drive:{name:'드라이브',skin:'#f1c9a5',hair:4,hairColor:'#2b1b12',top:'#1e90ff',bottom:'#1b2238',acc:'band',height:1.04,bulk:1.0,rubber:'red',rubberColor:'#ff0000'},
+  smash:{name:'스매시',skin:'#e8b58e',hair:3,hairColor:'#6b3e1f',top:'#f59e0b',bottom:'#222222',acc:'cap',height:1.06,bulk:1.15,rubber:'black',rubberColor:'#000000'},
+  defense:{name:'디펜스',skin:'#b97a4a',hair:0,hairColor:'#111111',top:'#14b8a6',bottom:'#111111',acc:'none',height:1.02,bulk:1.1,rubber:'red',rubberColor:'#ff0000'},
+  allround:{name:'올라운더',skin:'#e8b58e',hair:3,hairColor:'#111111',top:'#ef4444',bottom:'#111111',acc:'glasses',height:1.08,bulk:1.05,rubber:'red',rubberColor:'#ff0000'},
+  master:{name:'마스터',skin:'#f7dcc4',hair:1,hairColor:'#c0392b',top:'#a855f7',bottom:'#111111',acc:'band',height:1.1,bulk:0.95,rubber:'custom',rubberColor:'#8b5cf6'},
+  grand:{name:'그랜드 스매시',skin:'#cfd6e6',hair:1,hairColor:'#f1f1f1',top:'#111111',bottom:'#111111',acc:'none',height:1.12,bulk:0.9,rubber:'custom',rubberColor:'#8b0000'},
+};
+function startAI(d){ G.mode='ai'; G.diff=d; G.mySide=1; const c=Object.assign({},AI_CHARS[d]); c.name=`LV${CONFIG.AI[d].lv} ${c.name}`; setupCharacters(G.myCfg, c); startMatch(); showBubble('op', choice(CONFIG.AI[d].lines), 2.5); }
+
+$('#btnHost').onclick=()=>{ G.mode='multi'; hide('#lobbyMenu'); show('#lobbyHost'); NET.host(); };
+$('#btnJoin').onclick=()=>{ const c=$('#joinCode').value.trim(); if(c.length!==6){ $('#lobbyStatus').textContent='6자리 코드를 입력하세요'; return; } G.mode='multi'; NET.join(c); };
+$('#btnCopy').onclick=()=>{ if(navigator.clipboard) navigator.clipboard.writeText(NET.code).catch(()=>{}); $('#btnCopy').textContent='✅ 복사됨'; setTimeout(()=>$('#btnCopy').textContent='📋 복사',1500); }; $$('#emotes button').forEach(b=>b.onclick=()=>{ showBubble('me', b.dataset.e, 1.8); NET.send({t:'emote', e:b.dataset.e}); });
+
+$('#btnPause').onclick=()=>{ if((G.mode!=='ai'&&G.mode!=='practice')||G.screen!=='playing') return; G.paused=true; show('#scrPause'); };
+$('#btnResume').onclick=()=>{ hide('#scrPause'); G.paused=false; lastT=performance.now(); };
+$('#btnPauseMenu').onclick=()=>gotoScreen('mode'); $('#btnPauseSettings').onclick=()=>openSettings();
+function openSettings(){ $('#sVol').value=SETTINGS.volume; $('#sMute').checked=SETTINGS.muted; $('#sQuality').value=SETTINGS.quality; $('#sOffset').value=SETTINGS.offset; $('#sOffsetV').textContent=SETTINGS.offset; show('#scrSettings'); }
+$('#btnSettings').onclick=openSettings; $('#btnSettings2').onclick=openSettings;
+$('#btnSettingsClose').onclick=()=>{ hide('#scrSettings'); store.set('rpp_settings', SETTINGS); };
+$('#sVol').oninput=e=>{ SETTINGS.volume=+e.target.value; SFX.setVolume(SETTINGS.volume); };
+$('#sMute').onchange=e=>{ SETTINGS.muted=e.target.checked; SFX.setMuted(SETTINGS.muted); };
+$('#sQuality').onchange=e=>{ SETTINGS.quality=e.target.value; setQuality(SETTINGS.quality); };
+$('#sOffset').oninput=e=>{ SETTINGS.offset=+e.target.value; $('#sOffsetV').textContent=SETTINGS.offset; };
+$('#btnMute').onclick=()=>{ SETTINGS.muted=!SETTINGS.muted; SFX.setMuted(SETTINGS.muted); $('#sMute').checked=SETTINGS.muted; store.set('rpp_settings', SETTINGS); };
+
+function showResult(){
+  G.screen='result'; hideRhythm(); hide('#hud'); const S=G.stats, win=G.score[G.mySide]>G.score[-G.mySide];
+  $('#resTitle').textContent = win?'🏆 승리!':'😢 패배…'; $('#resScore').textContent=`${G.score[G.mySide]} : ${G.score[-G.mySide]}`;
+  const tot=S.PERFECT+S.GREAT+S.GOOD+S.MISS; const acc=tot? Math.round((S.PERFECT+0.7*S.GREAT+0.4*S.GOOD)/tot*100) : 0;
+  $('#resStats').innerHTML=[['PERFECT',S.PERFECT,'P'],['GREAT',S.GREAT,'G'],['GOOD',S.GOOD,'O'],['MISS',S.MISS,'M'],['정확도',acc+'%',''],['최고 콤보',S.maxCombo,''],['최고 구속',(S.maxSpeed*3.6).toFixed(1)+' km/h','']]
+    .map(([l,v,c])=>`<div class="stat"><b class="${c}">${v}</b><small>${l}</small></div>`).join('');
+  $('#resBtnsAI').classList.toggle('hidden', G.mode!=='ai'); $('#resBtnsMulti').classList.toggle('hidden', G.mode!=='multi');
+  G.rematch={me:false,op:false}; updateRematch(); show('#scrResult'); if(win) SFX.cheer(1);
+}
+function updateRematch(){ const st=$('#rematchStatus'), b=$('#btnRematch'); b.textContent=G.rematch.me?'요청 취소':'재시작 요청';
+  st.textContent = G.rematch.me&&G.rematch.op? '' : G.rematch.me? '상대를 기다리는 중…' : G.rematch.op? '상대가 재시작을 원합니다' : '';
+  if(G.rematch.me&&G.rematch.op&&NET.isHost){ NET.send({t:'restart'}); hideAllScreens(); startMatch(); } }
+$('#btnRematch').onclick=()=>{ G.rematch.me=!G.rematch.me; NET.send({t:'rematch', want:G.rematch.me}); updateRematch(); };
+$('#btnAgain').onclick=()=>{ hideAllScreens(); startMatch(); };
+$('#btnChangeDiff').onclick=()=>gotoScreen('diff');
+$('#btnResMenu').onclick=()=>gotoScreen('mode'); $('#btnResMenu2').onclick=()=>gotoScreen('mode');
+
+let lastT=performance.now(), accT=0;
+function frame(now){
+  requestAnimationFrame(frame); let dt=Math.min((now-lastT)/1000, 0.1); lastT=now; const t=now/1000;
+  if(G.screen==='playing' && !G.paused){ accT+=dt; let n=0; while(accT>=CONFIG.PHYS.DT && n<16){ physicsStep(CONFIG.PHYS.DT); accT-=CONFIG.PHYS.DT; n++; } if(n>=16) accT=0; }
+  if(G.screen==='custom' && prevChar){ prevChar.group.rotation.y=prevRotY; updateCharacter(prevChar, dt, t); const w=prevCanvas.clientWidth,h=prevCanvas.clientHeight; if(w&&prevW!==w){ prevW=w; prevR.setPixelRatio(Math.min(devicePixelRatio||1,2)); prevR.setSize(w,h,false); prevCam.aspect=w/h; prevCam.updateProjectionMatrix(); } prevR.render(prevScene, prevCam); }
+  for(const k in chars) updateCharacter(chars[k], dt, t);
+  ballMesh.visible=ball.active; if(ball.active) ballMesh.position.copy(ball.p);
+  if(machine && machine.group.visible){ machine.kick=Math.max(0,machine.kick-dt*5); machine.barrel.position.z=0.3-machine.kick*0.08; }
+  updateTrail(); updateCamera(dt); updateCrowd(dt,t); updateRhythm(); updateBubbles(t);
+  if(redLight.intensity>0) redLight.intensity=22+Math.sin(t*3)*6;
+  renderer.render(scene, camera);
+}
+
+G.myCfg = Object.assign({}, DEFAULT_CHAR, store.get('rpp_char', null) || randomChar());
+buildStadium(); buildMachine(); resize(); setQuality(SETTINGS.quality); fillSelects(); buildDiffCards();
+SFX.volume=SETTINGS.volume; SFX.muted=SETTINGS.muted; $('#btnMute').textContent=SETTINGS.muted?'🔇':'🔊';
+camera.position.set(0, CONFIG.CAMERA.HEIGHT, CONFIG.CAMERA.DIST); camera.lookAt(0,0.6,0);
+gotoScreen('title'); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
