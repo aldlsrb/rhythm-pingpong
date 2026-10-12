@@ -42,7 +42,7 @@
   #score .serve { opacity:0; font-size:14px; } #score .serve.on { opacity:1; }
   #score .vs { opacity:.5; font-size:12px; }
   #ping { position:absolute; top:12px; left:12px; font-size:12px; opacity:.7; background:rgba(0,0,0,.4); padding:4px 8px; border-radius:8px; }
-  #topBtns { position:absolute; top:10px; right:10px; display:flex; gap:6px; } #topBtns button { padding:8px 10px; font-size:16px; background:rgba(5,8,20,.7); }
+  #topBtns { position:absolute; top:10px; right:calc(10px + env(safe-area-inset-right, 0px)); display:flex; flex-direction:column; gap:6px; } #topBtns button { padding:8px 0; width:40px; font-size:16px; background:rgba(5,8,20,.7); }
   #judge { position:absolute; left:50%; top:38%; transform:translate(-50%,-50%); font-size:44px; font-weight:900; opacity:0; text-shadow:0 4px 18px rgba(0,0,0,.6); white-space:nowrap; }
   #judge.pop { animation:pop .7s ease-out forwards; }
   @keyframes pop { 0%{opacity:0; transform:translate(-50%,-50%) scale(.5);} 15%{opacity:1; transform:translate(-50%,-50%) scale(1.15);} 70%{opacity:1; transform:translate(-50%,-60%) scale(1);} 100%{opacity:0; transform:translate(-50%,-80%) scale(1);} }
@@ -56,14 +56,21 @@
   #target { position:absolute; width:78px; height:78px; border-radius:50%; border:4px solid #fff; box-shadow:0 0 14px rgba(255,255,255,.6), inset 0 0 10px rgba(255,255,255,.3); transform:translate(-50%,-50%); }
   #approach { position:absolute; width:78px; height:78px; border-radius:50%; border:3px solid var(--acc); box-shadow:0 0 12px rgba(255,176,32,.6); transform:translate(-50%,-50%); }
   #target.serve { border-color:#9df; }
+  #target::before { position:absolute; left:50%; bottom:100%; transform:translateX(-50%); margin-bottom:4px; font-size:12px; font-weight:800; color:#fff; text-shadow:0 1px 4px #000; white-space:nowrap; }
+  #target[data-k="cut"]::before { content:'커트볼'; } #target[data-k="drive"]::before { content:'드라이브볼'; } #target[data-k="touch"]::before { content:'짧은 공'; } #target[data-k="side"]::before { content:'횡회전'; } #target[data-k="smash"]::before { content:'스매시볼'; }
+  #target.far { border-style:dashed; border-color:#ff9a3c; }
+  #target.far:not(.smash)::after { content:'멀어요!'; position:absolute; left:50%; top:100%; transform:translateX(-50%); margin-top:4px; font-size:13px; font-weight:900; color:#ff9a3c; text-shadow:0 1px 4px #000; white-space:nowrap; }
+  #target.smash { border-color:#ff5050; box-shadow:0 0 18px rgba(255,80,80,.9), inset 0 0 12px rgba(255,80,80,.5); }
+  #target.smash::after { content:'SMASH!'; position:absolute; left:50%; top:100%; transform:translateX(-50%); margin-top:4px; font-size:13px; font-weight:900; color:#ff6b6b; text-shadow:0 1px 4px #000; white-space:nowrap; }
   .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; margin:10px 0 16px; }
   .stat { background:rgba(255,255,255,.06); border-radius:10px; padding:10px; text-align:center; } .stat b { display:block; font-size:22px; } .stat small { opacity:.7; font-size:12px; }
-  .P{color:#4da3ff} .G{color:#4cd964} .O{color:#ffd54a} .M{color:#f66}
+  .P{color:#4da3ff} .G{color:#4cd964} .O{color:#ffd54a} .B{color:#ff9a3c} .M{color:#f66}
   #notice .panel { text-align:center; }
   .tut li { margin:6px 0; line-height:1.5; }
   .arrow { display:inline-block; width:22px; text-align:center; font-weight:900; }
   #diffCards { grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); }
   #practiceInfo { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:rgba(5,8,20,.7); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:8px 14px; font-weight:700; font-size:15px; white-space:nowrap; }
+  @media (max-width:640px){ #score { gap:8px; padding:5px 10px; max-width:calc(100vw - 120px); } #score .nm { max-width:64px; font-size:12px; } #score .pt { font-size:22px; min-width:22px; } #practiceInfo { font-size:13px; padding:6px 10px; max-width:calc(100vw - 120px); overflow:hidden; } #ping { top:58px; } #topBtns button { width:38px; } }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
@@ -79,7 +86,7 @@
   </div>
   <div id="practiceInfo" class="hidden"></div>
   <div id="ping" class="hidden">ping --</div>
-  <div id="topBtns"><button id="btnPracticeSet" class="hidden" title="연습 설정">🎛</button><button id="btnPause" title="일시정지">⏸</button><button id="btnSettings" title="설정">⚙</button><button id="btnMute" title="음소거">🔊</button></div>
+  <div id="topBtns"><button id="btnPause" title="일시정지">⏸</button><button id="btnSettings" title="설정">⚙</button><button id="btnMute" title="음소거">🔊</button><button id="btnView" title="시점 변경">🎥</button><button id="btnPracticeSet" class="hidden" title="연습 설정">🎛</button></div>
   <div id="judge"></div>
   <div id="combo"></div>
   <div id="msg"></div>
@@ -149,7 +156,7 @@
     <h2>🎯 연습 모드</h2>
     <p class="sub">기계가 공을 계속 보내줘요. 점수도, 실점도 없어요.</p>
     <div class="col" style="text-align:left">
-      <label class="f">공 종류 <select id="pType"><option value="mix">랜덤</option><option value="drive">드라이브 (빠르고 낮게)</option><option value="cut">커트 (느리고 높게)</option><option value="touch">짧은 공 (네트 앞)</option></select></label>
+      <label class="f">공 종류 <select id="pType"><option value="mix">랜덤</option><option value="drive">드라이브 (빠르고 낮게)</option><option value="cut">커트 (느리고 높게)</option><option value="touch">짧은 공 (네트 앞)</option><option value="lob">높은 공 (스매시 연습)</option></select></label>
       <label class="f">공 속도 <select id="pSpeed"><option value="slow">느림</option><option value="mid" selected>보통</option><option value="fast">빠름</option></select></label>
       <label class="f">공 코스 <select id="pCourse"><option value="rand">랜덤</option><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option><option value="alt">좌우 번갈아</option></select></label>
       <label class="f">공 간격 <span><input type="range" id="pGap" min="0.1" max="2" step="0.1" value="1.4"> <span id="pGapV">1.4초</span></span></label>
@@ -205,6 +212,7 @@
       <label class="f">볼륨 <input type="range" id="sVol" min="0" max="1" step="0.05"></label>
       <label class="f">음소거 <input type="checkbox" id="sMute"></label>
       <label class="f">그래픽 품질 <select id="sQuality"><option value="low">낮음</option><option value="mid">보통</option><option value="high">높음</option></select></label>
+      <label class="f">시점 <select id="sView"><option value="back">뒤에서 (기본)</option><option value="diag">위</option><option value="fp">1인칭</option></select></label>
       <label class="f">판정 오프셋 보정 (ms) <span><input type="range" id="sOffset" min="-120" max="120" step="5"> <span id="sOffsetV">0</span></span></label>
       <p class="sub" style="font-size:12px">양수: 판정이 늦게 느껴질 때 / 음수: 빠르게 느껴질 때</p>
     </div>
@@ -221,7 +229,11 @@
       <li><span class="arrow">↓</span> 위→아래 드래그: <b class="G">커트</b>(백스핀, 느리고 높게 뜸)</li>
       <li><span class="arrow">•</span> 짧은 탭: <b class="O">터치</b>(네트 앞에 짧게)</li>
       <li>드래그의 <b>좌우 방향</b> = 코스, <b>드래그 속도</b> = 공 속도</li>
-      <li>판정: <b class="P">PERFECT</b> ±52ms · <b class="G">GREAT</b> ±117ms · <b class="O">GOOD</b> ±195ms · <b class="M">MISS</b> = 실점</li>
+      <li><b>서브:</b> ↑ 드라이브서브(빠르고 길게) · ↓ 커트서브(짧고 백스핀) · ←/→ 횡서브(옆으로 휘는 회전) · 탭 = 짧은 서브</li>
+      <li><b>스매시:</b> 높게 뜬 공에 <b class="M">SMASH!</b> 표시가 뜨면 위로 빠르게 드래그!</li>
+      <li><b>위치:</b> 상대가 서 있는 곳의 반대쪽 구석으로 빠르게 보내면 상대가 따라가지 못해 무리한 자세가 되고, 실수 확률이 올라가요. 내 쪽도 마찬가지!</li>
+      <li><b>상성:</b> 커트볼엔 터치, 드라이브볼엔 커트, 짧은 공엔 드라이브가 유리해요. 커트볼에 드라이브를 걸면 실수 확률이 커져요.</li>
+      <li>판정: <b class="P">PERFECT</b> ±60ms · <b class="G">GREAT</b> ±120ms · <b class="O">GOOD</b> ±180ms · <b class="B">BAD</b> ±240ms · <b class="M">MISS</b> = 실점</li>
       <li>정확할수록 상대에게 주어지는 반응 시간이 짧아집니다. 7점 선취 승리, 서브는 2점마다 교대.</li>
     </ul>
     <div class="row"><button class="primary" id="btnTutClose">알겠어요!</button></div>
@@ -237,15 +249,19 @@ import * as THREE from 'three';
 
 const CONFIG = {
   WIN_SCORE: 7, DEUCE: false, SERVE_SWITCH: 2,
-  JUDGE: { PERFECT: 52, GREAT: 117, GOOD: 195 },
-  WINDOW: { BASE: 1.2, MUL: { PERFECT: 0.6, GREAT: 0.8, GOOD: 1.1 }, MIN: 0.35, MAX: 1.8, SPEED_REF: 8 },
-  PHYS: { DT: 1/120, G: 9.81, DRAG: 0.11, MAGNUS: 0.004, REST_TABLE: 0.88, REST_FLOOR: 0.55, SPIN_FRICTION: 0.25, SPIN_DECAY_BOUNCE: 0.7, SPIN_AIR_DECAY: 0.1, BALL_R: 0.02 },
+  JUDGE: { PERFECT: 60, GREAT: 120, GOOD: 180, BAD: 240 },
+  WINDOW: { BASE: 1.2, MUL: { PERFECT: 0.6, GREAT: 0.8, GOOD: 1.1, BAD: 1.2 }, MIN: 0.35, MAX: 1.8, SPEED_REF: 8 },
+  PHYS: { DT: 1/120, G: 9.81, DRAG: 0.11, MAGNUS: 0.004, REST_TABLE: 0.88, REST_FLOOR: 0.55, SPIN_FRICTION: 0.25, SPIN_DECAY_BOUNCE: 0.7, SPIN_AIR_DECAY: 0.1, BALL_R: 0.02, SIDE_KICK: 0.004 },
   TABLE: { L: 2.74, W: 1.525, H: 0.76, NET_H: 0.1525, NET_OVER: 0.1525 },
   NET_CHANCE: 0.01,
+  SMASH_Y: 1.1,
+  SERVE: { cap:{ drive:7.0, side:5.4, cut:4.2, touch:3.6 }, depth:{ drive:0.85, side:0.6, cut:0.4, touch:0.3 } },
   SHOT: {
     drive: { minSpeed: 6.0, maxSpeed: 12.0, spin: 260, depth: 0.82 },
     cut:   { minSpeed: 4.0, maxSpeed: 6.8,  spin: -190, depth: 0.72 },
     touch: { minSpeed: 3.0, maxSpeed: 4.3,  spin: -40,  depth: 0.38 },
+    smash: { minSpeed: 11.0, maxSpeed: 17.0, spin: 60, depth: 0.88 },
+    side:  { minSpeed: 3.2, maxSpeed: 5.4, spin: 60, depth: 0.6, sideSpin: 170 },
   },
   INPUT: { TAP_PX: 15, TAP_MS: 150, SPEED_MIN: 0.25, SPEED_MAX: 2.2 },
   GREAT_ERROR: 0.10, GOOD_PENALTY: { SPEED: 0.8, ERROR: 0.28 },
@@ -326,6 +342,7 @@ const SFX = {
   judge(g){ if(g==='PERFECT'){ this.tone(1320,0.12,{gain:0.12,type:'triangle'}); this.tone(1760,0.18,{gain:0.12,type:'triangle',delay:0.07}); this.tone(2640,0.22,{gain:0.08,type:'sine',delay:0.14}); }
     else if(g==='GREAT'){ this.tone(1100,0.12,{gain:0.1,type:'triangle'}); this.tone(1480,0.14,{gain:0.08,type:'triangle',delay:0.06}); }
     else if(g==='GOOD'){ this.tone(800,0.12,{gain:0.09,type:'triangle'}); }
+    else if(g==='BAD'){ this.tone(520,0.12,{gain:0.09,type:'triangle'}); }
     else { this.tone(160,0.3,{gain:0.15,type:'sawtooth',freqEnd:70}); this.noise(0.2,{gain:0.1,filterFreq:400,type:'lowpass'}); } },
   point(win){ if(win){ [523,659,784,1047].forEach((f,i)=>this.tone(f,0.18,{gain:0.14,type:'triangle',delay:i*0.08})); } else { this.tone(392,0.25,{gain:0.12,type:'triangle'}); this.tone(311,0.4,{gain:0.12,type:'triangle',delay:0.18}); } },
   cheer(k=1){ if(!this.ctx||this.muted) return; this.noise(1.4, {gain:0.16*k, filterFreq:900, Q:0.6, attack:0.25}); this.noise(1.0, {gain:0.08*k, filterFreq:2200, Q:0.8, attack:0.35, delay:0.1}); },
@@ -347,8 +364,8 @@ function randomChar(){
 }
 const POSES = {
   rest:[-0.5,0.35,0], ready:[-0.3,0.7,0.15],
-  fore:{ drive:[[0.5,1.0,0.5],[-0.7,0.6,0],[-1.7,-0.4,-0.5]], cut:[[-1.8,1.0,0.4],[-0.7,0.6,0],[0.1,0.2,-0.3]], touch:[[-0.4,0.6,0.1],[-0.9,0.5,0],[-1.1,0.4,-0.1]] },
-  back:{ drive:[[-0.3,-0.7,-0.5],[-0.9,0.2,0],[-1.4,1.2,0.5]], cut:[[-1.6,-0.7,-0.4],[-0.8,0.3,0],[-0.1,1.0,0.3]], touch:[[-0.6,-0.4,-0.1],[-0.9,0.2,0],[-1.0,0.4,0.1]] },
+  fore:{ drive:[[0.5,1.0,0.5],[-0.7,0.6,0],[-1.7,-0.4,-0.5]], cut:[[-1.8,1.0,0.4],[-0.7,0.6,0],[0.1,0.2,-0.3]], touch:[[-0.4,0.6,0.1],[-0.9,0.5,0],[-1.1,0.4,-0.1]], smash:[[-2.6,0.9,0.5],[-0.9,0.5,0],[0.3,0.1,-0.5]] },
+  back:{ drive:[[-0.3,-0.7,-0.5],[-0.9,0.2,0],[-1.4,1.2,0.5]], cut:[[-1.6,-0.7,-0.4],[-0.8,0.3,0],[-0.1,1.0,0.3]], touch:[[-0.6,-0.4,-0.1],[-0.9,0.2,0],[-1.0,0.4,0.1]], smash:[[-2.4,-0.6,-0.5],[-0.9,0.3,0],[0.2,0.9,0.4]] },
 };
 function makeCharacter(cfg){
   const h=cfg.height, b=cfg.bulk; const g=new THREE.Group();
@@ -393,7 +410,7 @@ function charState(ch, s, dur){ ch.state=s; ch.stateUntil=performance.now()/1000
 function updateCharacter(ch, dt, now){
   const g=ch.group;
   const dx=ch.targetX-g.position.x, dz=ch.targetZ-g.position.z; const dist=Math.hypot(dx,dz);
-  const step=Math.min(dist, 3.6*dt); if(dist>0.005){ g.position.x+=dx/dist*step; g.position.z+=dz/dist*step; ch.moveT+=dt*14; } else ch.moveT*=0.8;
+  const step=Math.min(dist, (ch.run||2.4)*dt); if(dist>0.005){ g.position.x+=dx/dist*step; g.position.z+=dz/dist*step; ch.moveT+=dt*14; } else ch.moveT*=0.8;
   const moving=dist>0.02;
   if(ch.stateUntil && now>ch.stateUntil && (ch.state==='celebrate'||ch.state==='sad')) { ch.state='idle'; ch.stateUntil=0; }
   let target=POSES.rest, k=10, bodyY=0, bend=0, lArm=[-0.2,-0.25], headX=0, legSwing=0;
@@ -403,7 +420,7 @@ function updateCharacter(ch, dt, now){
   if(ch.state==='celebrate'){ bodyY=Math.abs(Math.sin(now*9))*0.22; target=[-2.9,0.4,0]; lArm=[-2.9,-0.4]; k=14; }
   if(ch.state==='sad'){ bend=0.45; headX=0.5; if(ch.scratch){ target=[-2.5,0.25+Math.sin(now*22)*0.08,0]; headX=-0.1; } else target=[-0.1,0.2,0]; k=8; }
   if(ch.fakeUntil>now){ target=POSES.fore.cut[0]; k=18; }
-  if(ch.swing){ const sw=ch.swing; sw.t+=dt; const p=sw.t/CONFIG.SWING_DUR; const kf=(POSES[sw.hand]||POSES.fore)[sw.tech]||POSES.fore.touch;
+  if(ch.swing){ const sw=ch.swing; sw.t+=dt; const p=sw.t/CONFIG.SWING_DUR; const kf=(POSES[sw.hand]||POSES.fore)[sw.tech==='side'?'cut':sw.tech]||POSES.fore.touch;
     const ease=x=>x<0?0:x>1?1:(1-Math.cos(x*Math.PI))/2;
     const mix=(a,b,t)=>[lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t)];
     target = p<0.5? mix(kf[0],kf[1],ease(p/0.5)) : mix(kf[1],kf[2],ease((p-0.5)/0.5));
@@ -487,12 +504,18 @@ function updateTrail(){ if(!ball.active){ trailMeshes.forEach(m=>m.visible=false
   trailHist.unshift(ball.p.clone()); if(trailHist.length>TRAIL_N*2) trailHist.pop();
   const s=spinScalar(ball); const col = s>60?0xff4040 : s<-30?0x40a0ff : 0xffffcc;
   trailMeshes.forEach((m,i)=>{ const p=trailHist[i*2]; if(p){ m.visible=true; m.position.copy(p); m.material.color.set(col); } else m.visible=false; }); }
-const camTmp=new THREE.Vector3();
-function updateCamera(dt){ const s=VIEW.side, C=CONFIG.CAMERA; const bx = ball.active? clamp(ball.p.x,-1,1)*0.25 : 0;
-  camTmp.set(bx, C.HEIGHT, s*C.DIST); camera.position.lerp(camTmp, 1-Math.exp(-dt*4));
+const camTmp=new THREE.Vector3(), lookTmp=new THREE.Vector3(), lookCur=new THREE.Vector3(0,0.6,0);
+const CAM_FOV={ back:50, diag:50, fp:62 };
+function updateCamera(dt){ const s=VIEW.side, C=CONFIG.CAMERA, v=SETTINGS.view||'back'; const asp=innerWidth/innerHeight; const bx = ball.active? clamp(ball.p.x,-1,1)*(asp<1?0.6:0.25) : 0; const me=chars[G.mySide];
+  if(v==='fp' && me){ const gp=me.group.position; camTmp.set(gp.x, 1.55*me.h, gp.z+s*0.45); lookTmp.set(gp.x*0.3+bx*0.5, 0.5, -s*0.6); }
+  else if(v==='diag'){ camTmp.set(bx, 4.4, s*5.4); lookTmp.set(0, 0.7, -s*0.2); }
+  else { camTmp.set(bx, 2.7, s*5.6); lookTmp.set(0, C.LOOK_Y, -s*0.3); }
+  camera.position.lerp(camTmp, 1-Math.exp(-dt*(v==='fp'?10:4))); lookCur.lerp(lookTmp, 1-Math.exp(-dt*6));
   VIEW.shake=Math.max(0,VIEW.shake-dt*2.5); const sh=VIEW.shake*VIEW.shake*0.08;
   camera.position.x+=rand(-sh,sh); camera.position.y+=rand(-sh,sh);
-  camera.lookAt(0, C.LOOK_Y, -s*0.3); }
+  camera.lookAt(lookCur);
+  const fov=(CAM_FOV[v]||50)+(asp<1? Math.min(26,(1-asp)*45) : 0); if(Math.abs(camera.fov-fov)>0.05){ camera.fov=lerp(camera.fov,fov,1-Math.exp(-dt*6)); camera.updateProjectionMatrix(); }
+  if(me) me.group.visible = (v!=='fp'); }
 
 const ball = { p:new THREE.Vector3(), v:new THREE.Vector3(), w:new THREE.Vector3(), active:false, floorBounces:0, netDone:false, netFlag:false, resting:false, held:true };
 const _a=new THREE.Vector3(), _m=new THREE.Vector3(), _h=new THREE.Vector3(), _ax=new THREE.Vector3();
@@ -511,7 +534,9 @@ function stepBall(b, dt, ev, forceNet){
   if(v.y<0 && p.y-R<=T.H && py-R>T.H && Math.abs(p.x)<=HW+0.005 && Math.abs(p.z)<=HL+0.005){
     p.y=T.H+R; v.y=-v.y*P.REST_TABLE;
     const s=spinScalar(b); _h.set(v.x,0,v.z).normalize(); const dv=P.SPIN_FRICTION*R*s;
-    v.x+=_h.x*dv; v.z+=_h.z*dv; v.y*=clamp(1-s*0.0008, 0.75, 1.2); w.multiplyScalar(P.SPIN_DECAY_BOUNCE);
+    v.x+=_h.x*dv; v.z+=_h.z*dv; v.y*=clamp(1-s*0.0008, 0.75, 1.2);
+    { const a=w.y; if(Math.abs(a)>1){ const hs=Math.hypot(v.x,v.z)||1; const k=P.SIDE_KICK*a/hs; const vx=v.x, vz=v.z; v.x+=k*vz; v.z-=k*vx; } }
+    w.multiplyScalar(P.SPIN_DECAY_BOUNCE);
     ev&&ev.push({type:'table', side:p.z>=0?1:-1, p:p.clone()});
   }
   if(p.y-R<=0 && v.y<0){ p.y=R; v.y=-v.y*P.REST_FLOOR; v.x*=0.8; v.z*=0.8; w.multiplyScalar(0.5); b.floorBounces++; ev&&ev.push({type:'floor', n:b.floorBounces, p:p.clone()}); if(Math.abs(v.y)<0.4){ v.y=0; if(b.floorBounces>5) b.resting=true; } }
@@ -528,7 +553,7 @@ function simulate(b0, maxT, forceNet=false, path=null, legacy=false){
   return {ev, cross, tb, minNetY, netT, b};
 }
 function solveVy(pos, vh, w, tz, crossIdx, side, serve, aiServe){
-  const mt=-side*tz; let lo=-2, hi=7, res=null;
+  const mt=-side*tz; let lo=-6, hi=7, res=null;
   const metric=(vy)=>{ const r=simulate({p:pos, v:new THREE.Vector3(vh.x,vy,vh.z), w}, 2.5, false, null, serve&&!aiServe);
     if(aiServe){ const c=r.tb[1]; if(r.netT!==Infinity && (!c || r.netT<c.t)) return {m:-10, r}; if(!r.tb[0] || r.tb[0].side!==side) return {m:-10, r}; if(!c) return {m:10, r}; return {m:-side*c.z, r, c}; }
     const c=r.cross[crossIdx];
@@ -537,33 +562,54 @@ function solveVy(pos, vh, w, tz, crossIdx, side, serve, aiServe){
   const ok = res.c && Math.abs(res.m-mt)<0.2 && res.r.netT===Infinity && res.r.minNetY > T.H+T.NET_H+0.015;
   return { ok, v:new THREE.Vector3(vh.x,res.vy,vh.z) };
 }
-function planShot(pos, side, tech, course, power, grade, serve, aiServe, forceOk){
-  const S=CONFIG.SHOT[tech]; let speed=lerp(S.minSpeed,S.maxSpeed,power); if(grade==='GOOD') speed*=CONFIG.GOOD_PENALTY.SPEED; if(serve) speed=Math.min(speed*0.75, 5.5);
-  const err = grade==='PERFECT'?0 : grade==='GREAT'?CONFIG.GREAT_ERROR : CONFIG.GOOD_PENALTY.ERROR;
+const MATCH={
+  cut:  { drive:[2.0,0.08,0.88,1.35], touch:[0.5,0,1,1], cut:[1,0,1,1], smash:[0.7,0,1,1] },
+  drive:{ cut:[0.5,0,0.9,1.2], touch:[2.0,0.08,1,1], drive:[1.2,0.02,1,1], smash:[1.5,0.04,1,1] },
+  touch:{ drive:[0.7,0,1.05,1], cut:[1,0,1,1], touch:[1,0,1,1], smash:[0.9,0,1,1] },
+  side: { drive:[1.3,0.02,1,1], cut:[1.3,0.02,1,1], touch:[1.3,0.02,1,1], smash:[1.5,0.03,1,1] },
+  smash:{ drive:[2.2,0.06,1,1], touch:[2.5,0.1,1,1], cut:[1.4,0.02,1,1], smash:[2.5,0.1,1,1] },
+};
+function matchup(tech, kind){ const r=(MATCH[kind]||{})[tech]; return r? {m:r[0],a:r[1],s:r[2],sp:r[3]} : {m:1,a:0,s:1,sp:1}; }
+function planShot(pos, side, tech, course, power, grade, serve, aiServe, forceOk, kind, strain){
+  const S=CONFIG.SHOT[tech]; const mx = serve? {m:1,a:0,s:1,sp:1} : matchup(tech, kind);
+  let speed=lerp(S.minSpeed,S.maxSpeed,power)*mx.s*(1-0.25*(strain||0)); if(grade==='GOOD'||grade==='BAD') speed*=CONFIG.GOOD_PENALTY.SPEED; if(serve) speed=Math.min(speed*0.75, CONFIG.SERVE.cap[tech]||5.5);
+  const err = (grade==='PERFECT'?0 : grade==='GREAT'?CONFIG.GREAT_ERROR : CONFIG.GOOD_PENALTY.ERROR) + 0.2*(strain||0);
   const tx = clamp(side*course*HW*0.7 + rand(-err,err)*1.3, -(HW-0.1), HW-0.1);
-  const tz = -side*clamp(HL*(serve?0.72:S.depth) + rand(-err,err), 0.25, HL-0.15);
+  const depth = serve? (CONFIG.SERVE.depth[tech]||0.72) : S.depth;
+  const tz = -side*clamp(HL*depth + rand(-err,err), 0.25, HL-0.15);
   const dirH=new THREE.Vector3(tx-pos.x,0,tz-pos.z).normalize();
-  const w=new THREE.Vector3().crossVectors(UP,dirH).multiplyScalar(S.spin*(0.6+0.6*power)); w.y+=rand(-25,25);
-  if(aiServe){ let bs=null, be=1e9; const mt=-side*tz, base=speed;
-    const lists=[[0.6,0.7,0.8,0.9,1,1.1,1.2].map(k=>base*k), [2.6,3.2,3.8,4.5,5.2,5.8]];
-    for(const list of lists){ for(const sp of list) for(let vy=-1.5; vy<=3.5; vy+=0.1){ const v=dirH.clone().multiplyScalar(sp); v.y=vy;
-      const r=simulate({p:pos, v, w}, 2.5); if(r.netT!==Infinity || r.minNetY<=T.H+T.NET_H+0.015) continue;
-      const q0=r.tb[0], q1=r.tb[1]; if(!q0||!q1||q0.side!==side||q1.side!==-side) continue;
-      const e=Math.abs(-side*q1.z-mt)+0.4*Math.abs(sp-base); if(e<be){ be=e; bs=v.clone(); } }
-      if(bs) break; }
-    if(bs) return { v:bs, w, speed:bs.length(), target:{x:tx,z:tz} }; }
+  const w=new THREE.Vector3().crossVectors(UP,dirH).multiplyScalar(S.spin*(0.6+0.6*power)*mx.sp); w.y+=rand(-25,25);
+  let cx=0; if(S.sideSpin){ cx = side*(Math.abs(course)>0.12? Math.sign(course) : (Math.random()<0.5?-1:1)); w.y += -side*cx*S.sideSpin*(0.6+0.6*power); }
+  if(serve){
+    const mt=-side*tz, base=speed; const lists=[[0.6,0.7,0.8,0.9,1,1.1,1.2].map(k=>base*k), [2.6,3.2,3.8,4.5,5.2,5.8,6.6,7.4]];
+    const solveFor=(aimX)=>{ const dh=new THREE.Vector3(aimX-pos.x,0,tz-pos.z).normalize(); let bs=null, be=1e9, bx=0;
+      for(const list of lists){ for(const sp of list) for(let vy=-1.5; vy<=3.5; vy+=0.1){ const v=dh.clone().multiplyScalar(sp); v.y=vy;
+        const r=simulate({p:pos, v, w}, 2.5); if(r.netT!==Infinity || r.minNetY<=T.H+T.NET_H+0.015) continue;
+        const q0=r.tb[0], q1=r.tb[1]; if(!q0||!q1||q0.side!==side||q1.side!==-side) continue;
+        if(Math.abs(q1.x)>HW-0.05 || Math.abs(q0.x)>HW-0.03) continue;
+        const e=Math.abs(-side*q1.z-mt)+0.4*Math.abs(sp-base)+(cx? 2*Math.abs(q1.x-tx):0); if(e<be){ be=e; bs=v.clone(); bx=q1.x; } }
+        if(bs) break; }
+      return bs? {v:bs, x:bx} : null; };
+    const aim0 = cx? clamp(tx-cx*0.45, -(HW-0.05), HW-0.05) : tx;
+    let res=solveFor(aim0);
+    if(cx && res){ const d=tx-res.x; if(Math.abs(d)>0.08){ const r2=solveFor(clamp(aim0+d, -HW, HW)); if(r2 && Math.abs(tx-r2.x)<Math.abs(tx-res.x)) res=r2; } }
+    if(!res && cx){ w.y*=0.5; res=solveFor(tx); }
+    if(!res && cx){ w.y=rand(-25,25); res=solveFor(tx); }
+    if(res) return { v:res.v, w, speed:res.v.length(), target:{x:tx,z:tz} };
+  }
   let best=null, last=null;
-  for(let i=0;i<5;i++){ const vh=dirH.clone().multiplyScalar(speed); last=solveVy(pos,vh,w,tz,serve?1:0,side,serve,aiServe); if(last.ok){ best=last; break; } speed*=0.86; }
+  for(let i=0;i<5;i++){ const vh=dirH.clone().multiplyScalar(speed); last=solveVy(pos,vh,w,tz,serve?1:0,side,serve,serve); if(last.ok){ best=last; break; } speed*=0.86; }
   if(!best) best=last;
   if(!serve){
     const landsOk=(vv)=>{ const r=simulate({p:pos, v:vv, w}, 3); if(r.netT!==Infinity) return false; const q=r.ev.find(e=>e.type==='table'); return !!q && q.side===-side; };
-    const PF={drive:{GREAT:0.10,GOOD:0.15},cut:{GREAT:0.03,GOOD:0.05},touch:{GREAT:0.05,GOOD:0.08}}; const pf=(PF[tech]&&PF[tech][grade])||0;
+    const PF={drive:{GREAT:0.10,GOOD:0.15,BAD:0.5},cut:{GREAT:0.03,GOOD:0.05,BAD:0.5},touch:{GREAT:0.05,GOOD:0.08,BAD:0.5},smash:{GREAT:0.12,GOOD:0.22,BAD:0.6}};
+    const pf=clamp(((PF[tech]&&PF[tech][grade])||0)*mx.m+mx.a+0.3*(strain||0), 0, 0.95);
     if(forceOk!==true && forceOk!==2 && Math.random()<pf){
       let fv=best.v.clone();
       for(let k=0;k<8;k++){ const v=best.v.clone(); if(Math.random()<0.5){ const f=1.25+0.1*k; v.x*=f; v.z*=f; } else { v.y-=0.8+0.2*k; } fv=v; if(!landsOk(v)) break; }
       return { v:fv, w, speed:fv.length(), target:{x:tx,z:tz} };
     }
-    if(forceOk!==2 && !landsOk(best.v)) return planShot(pos, side, tech, course, power, 'PERFECT', serve, aiServe, 2);
+    if(forceOk!==2 && !landsOk(best.v)) return planShot(pos, side, tech, course, power, 'PERFECT', serve, aiServe, 2, kind, 0);
   }
   return { v:best.v, w, speed:best.v.length(), target:{x:tx,z:tz} };
 }
@@ -571,9 +617,9 @@ function planShot(pos, side, tech, course, power, grade, serve, aiServe, forceOk
 const G = { screen:'title', mode:null, mySide:1, diff:null, score:{1:0,'-1':0}, firstServer:1, paused:false, stats:null, chars:{}, names:{1:'',"-1":''}, weak:null, myCfg:null, oppCfg:null, rematch:{me:false,op:false} };
 let R = { phase:'idle' };
 let simTime = 0;
-const SETTINGS = Object.assign({ volume:0.8, muted:false, quality:'mid', offset:0 }, store.get('rpp_settings', {}));
+const SETTINGS = Object.assign({ volume:0.8, muted:false, quality:'mid', offset:0, view:'back' }, store.get('rpp_settings', {}));
 const chars = G.chars;
-function resetStats(){ G.stats={PERFECT:0,GREAT:0,GOOD:0,MISS:0,combo:0,maxCombo:0,maxSpeed:0}; G.weak={'-1':{s:0,n:0},'0':{s:0,n:0},'1':{s:0,n:0}}; }
+function resetStats(){ G.stats={PERFECT:0,GREAT:0,GOOD:0,BAD:0,MISS:0,combo:0,maxCombo:0,maxSpeed:0}; G.weak={'-1':{s:0,n:0},'0':{s:0,n:0},'1':{s:0,n:0}}; }
 function aiWin(side, win){ if(G.mode!=='ai' || side===G.mySide) return win; const m=CONFIG.AI[G.diff].winMul||1; return Math.min(1.8, Math.max(0.25, win*m)); }
 function computeWindow(grade, speed){ const W=CONFIG.WINDOW; return clamp(W.BASE*(W.MUL[grade]||1)*clamp(W.SPEED_REF/Math.max(1,speed),0.7,1.3), W.MIN, W.MAX); }
 function setupCharacters(myCfg, oppCfg){
@@ -600,7 +646,7 @@ function beginServe(server){
   for(const k in chars){ const c=chars[k]; c.targetX=0; c.targetZ=c.side*(HL+0.6); c.state='idle'; c.scratch=false; }
   updateScore(); hideRhythm();
   showMsg(server===G.mySide? '내 서브' : '상대 서브', 1.0);
-  $('#hint').textContent = server===G.mySide ? '원 위치에서 시작해 겹칠 때 드래그로 서브! ↑드라이브 ↓커트 ·탭=터치' : '공이 오면 원이 나타납니다';
+  $('#hint').textContent = server===G.mySide ? '원에서 시작해 겹칠 때 드래그! 서브: ↑드라이브 ↓커트 ←→횡 탭=짧게' : '공이 오면 원이 나타납니다';
 }
 function doToss(){
   R.tossed=true; ball.held=false; ball.v.set(0,4.2,0);
@@ -628,25 +674,28 @@ function computeIncoming(side, windowSec){
 function doHit(side, o){
   const serve = R.phase==='serve';
   const pos = (R.incoming && R.incoming.side===side)? R.incoming.pos.clone() : ball.p.clone();
-  const plan = planShot(pos, side, o.tech, o.course, o.power, o.grade, serve, serve, o.lucky?true:false);
+  let strain=0; if(!serve){ const ch0=chars[side]; if(ch0){ const lag=Math.abs(ch0.group.position.x-(pos.x-side*0.12)); strain=clamp((lag-0.25)/0.6,0,1); } }
+  if(strain>0.3 && side===G.mySide) showMsg('무리한 자세!', 0.8, '#ff9a3c');
+  const plan = planShot(pos, side, o.tech, o.course, o.power, o.grade, serve, serve, o.lucky?true:false, serve? null : ((R.incoming && R.incoming.side===side)? R.incoming.kind : null), strain);
   if(serve && Math.random()<0.01){
     const okServe=(vv)=>{ const r=simulate({p:pos, v:vv, w:plan.w}, 3); if(r.netT!==Infinity) return false; const t=r.ev.filter(e=>e.type==='table'); return !!(t[0]&&t[0].side===side&&t[1]&&t[1].side===-side); };
     let fv=plan.v.clone();
     for(let k=0;k<8;k++){ const v=plan.v.clone(); if(Math.random()<0.5){ const f=1.3+0.1*k; v.x*=f; v.z*=f; } else { v.y-=0.8+0.2*k; } fv=v; if(!okServe(v)) break; }
     plan.v=fv; plan.speed=fv.length();
   }
-  applyHitState(side, pos, plan.v, plan.w, o.tech, o.grade, o.netFlag!==undefined? o.netFlag : Math.random()<CONFIG.NET_CHANCE, serve, aiWin(side, computeWindow(o.grade, plan.speed)), plan.speed);
+  applyHitState(side, pos, plan.v, plan.w, o.tech, o.grade, o.netFlag!==undefined? o.netFlag : Math.random()<CONFIG.NET_CHANCE, serve, aiWin(side, computeWindow(o.grade, plan.speed)*(o.tech==='smash'?0.8:1)), plan.speed);
   if(G.mode==='multi' && side===G.mySide) NET.send({ t:'hit', side, p:ball.p.toArray(), v:ball.v.toArray(), w:ball.w.toArray(), tech:o.tech, grade:o.grade, net:ball.netFlag, win:R.hitWindow, serve, speed:plan.speed, ts:Date.now() });
 }
 function applyHitState(side, pos, v, w, tech, grade, netFlag, serve, win, speed){
   ball.p.copy(pos); ball.v.copy(v); ball.w.copy(w); ball.netDone=false; ball.floorBounces=0; ball.held=false; ball.active=true; ball.resting=false; ball.netFlag=netFlag;
   R.phase='rally'; R.lastHitter=side; R.bounces=0; R.needOwnBounce=serve; R.serveShot=serve; R.hitWindow=win; R.ai=null; hideRhythm();
-  R.incoming = computeIncoming(-side, win);
+  R.incoming = computeIncoming(-side, win); if(R.incoming) R.incoming.kind=tech; R.lastTech=tech;
   const ch=chars[side]; if(ch){ const hand=(pos.x-ch.group.position.x)*side>=-0.05?'fore':'back'; charSwing(ch, tech, hand, 0.3); }
   SFX.hit(speed, grade==='PERFECT', pos.x); if(speed>CONFIG.CAMERA.SHAKE_SPEED) VIEW.shake=clamp((speed-9)/6,0,1);
+  if(tech==='smash'){ SFX.tone(110,0.25,{gain:0.3,type:'triangle',freqEnd:45,x:pos.x}); VIEW.shake=1; showMsg('SMASH!',0.8,'#ff6b6b'); }
   if(side===G.mySide) G.stats.maxSpeed=Math.max(G.stats.maxSpeed, speed);
   if(G.mode==='ai' && R.incoming && R.incoming.side===-G.mySide) aiPlan();
-  if(R.incoming && chars[R.incoming.side]){ const rc=chars[R.incoming.side]; rc.targetX = R.incoming.pos.x - rc.side*0.12; const inZ=rc.side*R.incoming.pos.z; rc.targetZ = inZ < HL+0.2 ? R.incoming.pos.z + rc.side*0.5 : rc.side*(HL+0.6); }
+  if(R.incoming && chars[R.incoming.side]){ const rc=chars[R.incoming.side]; rc.targetX = R.incoming.pos.x - rc.side*0.12; const inZ=rc.side*R.incoming.pos.z; const back=clamp((speed-7)/6,0,1)*0.7; rc.targetZ = (inZ < HL+0.2 ? R.incoming.pos.z + rc.side*0.5 : rc.side*(HL+0.6)) + rc.side*back; }
 }
 function doMiss(side, tech){
   if(R.phase==='end') return; const ch=chars[side]; if(ch) charSwing(ch, tech||'drive', 'fore', 0.3);
@@ -683,7 +732,7 @@ function endRally(winner, reason, fromNet){
 function physicsStep(dt){
   if(R.phase==='serve' && !R.tossed && simTime>=R.tossAt) doToss();
   if(ball.active && !ball.held){ const ev=[]; stepBall(ball, dt, ev, ball.netFlag); if(ev.length) processEvents(ev); }
-  const inc=R.incoming; if(inc && inc.side===G.mySide && !inc.done && simTime>inc.t+CONFIG.JUDGE.GOOD/1000 && (R.phase==='rally'||R.phase==='serve')){ inc.done=true; registerJudge('MISS', 0); doMiss(G.mySide); }
+  const inc=R.incoming; if(inc && inc.side===G.mySide && !inc.done && simTime>inc.t+CONFIG.JUDGE.BAD/1000 && (R.phase==='rally'||R.phase==='serve')){ inc.done=true; registerJudge('MISS', 0); doMiss(G.mySide); }
   if(G.mode==='ai') aiUpdate();
   if(G.mode==='practice') practiceUpdate();
   simTime+=dt;
@@ -721,7 +770,7 @@ function practiceStart(){
   $('#hint').textContent='기계가 보내는 공을 계속 쳐보세요! 원이 겹칠 때 드래그';
   showMsg('연습 시작!', 1.0); updatePractice();
 }
-function updatePractice(){ const S=G.stats; $('#practiceInfo').innerHTML=`🎯 연습 모드 &nbsp; <span class="P">P ${S.PERFECT}</span> <span class="G">G ${S.GREAT}</span> <span class="O">O ${S.GOOD}</span> <span class="M">M ${S.MISS}</span>`; }
+function updatePractice(){ const S=G.stats; $('#practiceInfo').innerHTML=`🎯 연습 모드 &nbsp; <span class="P">P ${S.PERFECT}</span> <span class="G">G ${S.GREAT}</span> <span class="O">O ${S.GOOD}</span> <span class="B">B ${S.BAD}</span> <span class="M">M ${S.MISS}</span>`; }
 function practiceUpdate(){
   if(R.phase==='end'){ if(R.nextFeedAt!==undefined && simTime>=R.nextFeedAt) feedBall(); }
   else if(R.phase==='rally' && simTime-R.feedT>8){ R.phase='end'; R.incoming=null; hideRhythm(); R.nextFeedAt=simTime+0.5; }
@@ -729,9 +778,9 @@ function practiceUpdate(){
 function feedBall(){
   if(G.screen!=='playing' || G.mode!=='practice') return;
   const side=-G.mySide, P=G.practice||{type:'mix',speed:'mid'};
-  const tech = P.type==='mix'? weighted({drive:0.45,cut:0.35,touch:0.2}) : P.type;
+  let tech = P.type==='mix'? weighted({drive:0.45,cut:0.35,touch:0.2}) : P.type; let lob=false; if(tech==='lob'){ tech='cut'; lob=true; }
   const rng = {slow:[0.1,0.3], mid:[0.35,0.6], fast:[0.65,0.9]}[P.speed] || [0.35,0.6];
-  const power=rand(rng[0],rng[1]); let course;
+  const power= lob? rand(0.05,0.2) : rand(rng[0],rng[1]); let course;
   if(P.course==='left') course=rand(0.6,0.95); else if(P.course==='right') course=rand(-0.95,-0.6); else if(P.course==='center') course=rand(-0.15,0.15);
   else if(P.course==='alt'){ G.pAlt=!G.pAlt; course=G.pAlt? rand(0.6,0.95) : rand(-0.95,-0.6); } else course=rand(-0.9,0.9);
   const pos=new THREE.Vector3(0, rand(0.98,1.04), side*(HL+0.45));
@@ -747,17 +796,20 @@ function updateRhythm(){
   const inc=R.incoming; const me=chars[G.mySide];
   if(!inc || inc.side!==G.mySide || inc.done || G.screen!=='playing' || simTime<inc.start-0.05){ hideRhythm(); if(me && me.state==='ready') me.state='idle'; return; }
   rhythmEl.classList.remove('hidden'); if(me && me.state==='idle' && !me.swing) me.state='ready';
-  _proj.copy(inc.pos).project(camera); const sx=(_proj.x+1)/2*innerWidth, sy=(1-_proj.y)/2*innerHeight;
+  _proj.copy(inc.pos).project(camera); let sx=(_proj.x+1)/2*innerWidth, sy=(1-_proj.y)/2*innerHeight;
+  if(_proj.z>1){ sx=innerWidth/2; sy=innerHeight-110; }
+  sx=clamp(sx,48,innerWidth-48); sy=clamp(sy,96,innerHeight-70);
   tgtScr.x=sx; tgtScr.y=sy; targetEl.style.left=sx+'px'; targetEl.style.top=sy+'px'; approachEl.style.left=sx+'px'; approachEl.style.top=sy+'px';
-  targetEl.classList.toggle('serve', R.phase==='serve');
+  targetEl.classList.toggle('serve', R.phase==='serve'); targetEl.dataset.k = R.phase==='serve' ? '' : (inc.kind||''); targetEl.classList.toggle('smash', R.phase!=='serve' && inc.pos.y>=CONFIG.SMASH_Y);
+  if(me && R.phase!=='serve'){ const rem=Math.max(0,inc.t-simTime); const gap=Math.abs(me.group.position.x-(inc.pos.x-G.mySide*0.12)); targetEl.classList.toggle('far', Math.max(0,gap-(me.run||2.4)*rem)>0.25); } else targetEl.classList.remove('far');
   const k=clamp((inc.t-simTime)/inc.window,0,1); const size=78*(1+3.2*k); approachEl.style.width=size+'px'; approachEl.style.height=size+'px';
-  const err=Math.abs(inc.t-simTime)*1000; const ac = err<=CONFIG.JUDGE.PERFECT?'#4da3ff' : err<=CONFIG.JUDGE.GREAT?'#4cd964' : err<=CONFIG.JUDGE.GOOD?'#ffd54a' : '#ff3b3b'; approachEl.style.borderColor=ac; approachEl.style.boxShadow='0 0 12px '+ac;
+  const err=Math.abs(inc.t-simTime)*1000; const ac = err<=CONFIG.JUDGE.PERFECT?'#4da3ff' : err<=CONFIG.JUDGE.GREAT?'#4cd964' : err<=CONFIG.JUDGE.GOOD?'#ffd54a' : err<=CONFIG.JUDGE.BAD?'#ff9a3c' : '#ff3b3b'; approachEl.style.borderColor=ac; approachEl.style.boxShadow='0 0 12px '+ac;
   approachEl.style.opacity = simTime>inc.t? String(clamp(1-(simTime-inc.t)/0.2,0,1)) : '1';
 }
 function registerJudge(grade, course){
   const S=G.stats; S[grade]++; if(grade==='MISS') S.combo=0; else { S.combo++; S.maxCombo=Math.max(S.maxCombo,S.combo); }
   const inc=R.incoming; if(inc){ const k=Math.sign(Math.round(inc.pos.x*G.mySide*2)); const w=G.weak[String(k)]; w.n++; w.s+= grade==='PERFECT'?1: grade==='GREAT'?0.7: grade==='GOOD'?0.4:0; }
-  const je=$('#judge'); je.textContent=grade; je.className=''; je.classList.add({PERFECT:'P',GREAT:'G',GOOD:'O',MISS:'M'}[grade]); void je.offsetWidth; je.classList.add('pop');
+  const je=$('#judge'); je.textContent=grade; je.className=''; je.classList.add({PERFECT:'P',GREAT:'G',GOOD:'O',BAD:'B',MISS:'M'}[grade]); void je.offsetWidth; je.classList.add('pop');
   $('#combo').textContent = S.combo>=2? `${S.combo} COMBO` : ''; SFX.judge(grade); if(G.mode==='practice') updatePractice();
 }
 let ptr=null; const TOUCH_R=55, tgtScr={x:0,y:0};
@@ -768,12 +820,14 @@ function handleSwipe(a,b){
   const I=CONFIG.INPUT; const dx=b.x-a.x, dy=b.y-a.y, dur=Math.max(1,b.t-a.t), dist=Math.hypot(dx,dy); const norm=720/Math.min(innerWidth,innerHeight);
   let tech, course, power;
   if(dist<I.TAP_PX && dur<I.TAP_MS){ tech='touch'; course=0; power=0.5; }
-  else { tech = dy<0?'drive':'cut'; course=clamp(dx*norm/220,-1,1); const spd=dist*norm/dur; power=clamp((spd-I.SPEED_MIN)/(I.SPEED_MAX-I.SPEED_MIN),0,1); }
+  else { course=clamp(dx*norm/220,-1,1); const spd=dist*norm/dur; power=clamp((spd-I.SPEED_MIN)/(I.SPEED_MAX-I.SPEED_MIN),0,1);
+    if(R.phase==='serve'){ tech = Math.abs(dx)>Math.abs(dy)*1.3 ? 'side' : (dy<0?'drive':'cut'); }
+    else { tech = dy<0?'drive':'cut'; const ic=R.incoming; if(tech==='drive' && power>=0.65 && ic && ic.side===G.mySide && !ic.done && ic.pos.y>=CONFIG.SMASH_Y) tech='smash'; } }
   const inc=R.incoming;
   if(!inc || inc.side!==G.mySide || inc.done || simTime<inc.start){ if(chars[G.mySide]) charSwing(chars[G.mySide], tech, dx*G.mySide>=0?'fore':'back', 0.3); return; }
   const inputSim = simTime - (performance.now()-b.t)/1000 + SETTINGS.offset/1000;
   const ae=Math.abs(inputSim-inc.t)*1000, J=CONFIG.JUDGE;
-  const grade = ae<=J.PERFECT?'PERFECT': ae<=J.GREAT?'GREAT': ae<=J.GOOD?'GOOD':'MISS';
+  const grade = ae<=J.PERFECT?'PERFECT': ae<=J.GREAT?'GREAT': ae<=J.GOOD?'GOOD': ae<=J.BAD?'BAD':'MISS';
   inc.done=true; registerJudge(grade, course);
   if(grade==='MISS'){ if(Math.random()<0.05) doHit(G.mySide, {tech, course, power, grade:'GOOD', lucky:true}); else doMiss(G.mySide, tech); return; }
   doHit(G.mySide, {tech, course, power, grade});
@@ -783,10 +837,19 @@ function aiPlan(){
   const prof=CONFIG.AI[G.diff]; const inc=R.incoming; if(!inc) return;
   const gr=Object.assign({}, prof.grades); const pressure=Math.max(0,(1.0-inc.window))*prof.pressure; gr.MISS=clamp(gr.MISS+pressure,0,0.9);
   const sum=gr.PERFECT+gr.GREAT+gr.GOOD, sc=(1-gr.MISS)/sum; gr.PERFECT*=sc; gr.GREAT*=sc; gr.GOOD*=sc;
-  const grade=weighted(gr); let tech=weighted(prof.tech);
-  if(prof.fake && R.aiLastTech==='drive' && Math.random()<0.5) tech='cut';
+  const grade=weighted(gr); let tech; const serving=(R.phase==='serve'), lv=prof.lv||1;
+  if(serving){ const SW={1:{touch:0.5,cut:0.5}, 2:{touch:0.3,cut:0.4,side:0.3}}[lv] || {drive:0.3,cut:0.25,touch:0.1,side:0.35}; tech=weighted(SW); }
+  else {
+    tech=weighted(prof.tech);
+    if(prof.fake && R.aiLastTech==='drive' && Math.random()<0.5) tech='cut';
+    const SMART=[0,0,0,0.3,0.45,0.55,0.65,0.8,0.9], COUNTER={cut:'touch', drive:'cut', touch:'drive', side:'drive', smash:'cut'};
+    if(inc.kind && COUNTER[inc.kind] && Math.random()<SMART[lv]) tech=COUNTER[inc.kind];
+    const SMASH_P=[0,0,0.15,0.3,0.6,0.35,0.55,0.7,0.8];
+    if(inc.pos.y>=CONFIG.SMASH_Y && Math.random()<SMASH_P[lv]) tech='smash';
+  }
   R.aiLastTech=tech;
   let course; if(prof.course==='center') course=rand(-0.15,0.15); else if(prof.course==='sides') course=choice([-0.8,-0.45,0,0.45,0.8])+rand(-0.1,0.1); else course=weakCourse()+rand(-0.12,0.12);
+  if(tech==='side') course=choice([-1,1])*rand(0.5,0.9);
   const power=rand(prof.power[0],prof.power[1]);
   R.ai={grade, tech, course, power, hitAt:inc.t, done:false, fake: !!prof.fake && Math.random()<0.5};
 }
@@ -918,7 +981,7 @@ const AI_CHARS={
   master:{name:'마스터',skin:'#f7dcc4',hair:1,hairColor:'#c0392b',top:'#a855f7',bottom:'#111111',acc:'band',height:1.1,bulk:0.95,rubber:'custom',rubberColor:'#8b5cf6'},
   grand:{name:'그랜드 스매시',skin:'#cfd6e6',hair:1,hairColor:'#f1f1f1',top:'#111111',bottom:'#111111',acc:'none',height:1.12,bulk:0.9,rubber:'custom',rubberColor:'#8b0000'},
 };
-function startAI(d){ G.mode='ai'; G.diff=d; G.mySide=1; const c=Object.assign({},AI_CHARS[d]); c.name=`LV${CONFIG.AI[d].lv} ${c.name}`; setupCharacters(G.myCfg, c); startMatch(); showBubble('op', choice(CONFIG.AI[d].lines), 2.5); }
+function startAI(d){ G.mode='ai'; G.diff=d; G.mySide=1; const c=Object.assign({},AI_CHARS[d]); c.name=`LV${CONFIG.AI[d].lv} ${c.name}`; setupCharacters(G.myCfg, c); if(chars[-G.mySide]) chars[-G.mySide].run=2.0+0.2*CONFIG.AI[d].lv; startMatch(); showBubble('op', choice(CONFIG.AI[d].lines), 2.5); }
 
 $('#btnHost').onclick=()=>{ G.mode='multi'; hide('#lobbyMenu'); show('#lobbyHost'); NET.host(); };
 $('#btnJoin').onclick=()=>{ const c=$('#joinCode').value.trim(); if(c.length!==6){ $('#lobbyStatus').textContent='6자리 코드를 입력하세요'; return; } G.mode='multi'; NET.join(c); };
@@ -927,20 +990,23 @@ $('#btnCopy').onclick=()=>{ if(navigator.clipboard) navigator.clipboard.writeTex
 $('#btnPause').onclick=()=>{ if((G.mode!=='ai'&&G.mode!=='practice')||G.screen!=='playing') return; G.paused=true; show('#scrPause'); };
 $('#btnResume').onclick=()=>{ hide('#scrPause'); G.paused=false; lastT=performance.now(); };
 $('#btnPauseMenu').onclick=()=>gotoScreen('mode'); $('#btnPauseSettings').onclick=()=>openSettings();
-function openSettings(){ $('#sVol').value=SETTINGS.volume; $('#sMute').checked=SETTINGS.muted; $('#sQuality').value=SETTINGS.quality; $('#sOffset').value=SETTINGS.offset; $('#sOffsetV').textContent=SETTINGS.offset; show('#scrSettings'); }
+function openSettings(){ $('#sVol').value=SETTINGS.volume; $('#sMute').checked=SETTINGS.muted; $('#sQuality').value=SETTINGS.quality; $('#sView').value=SETTINGS.view||'back'; $('#sOffset').value=SETTINGS.offset; $('#sOffsetV').textContent=SETTINGS.offset; show('#scrSettings'); }
 $('#btnSettings').onclick=openSettings; $('#btnSettings2').onclick=openSettings;
 $('#btnSettingsClose').onclick=()=>{ hide('#scrSettings'); store.set('rpp_settings', SETTINGS); };
 $('#sVol').oninput=e=>{ SETTINGS.volume=+e.target.value; SFX.setVolume(SETTINGS.volume); };
 $('#sMute').onchange=e=>{ SETTINGS.muted=e.target.checked; SFX.setMuted(SETTINGS.muted); };
 $('#sQuality').onchange=e=>{ SETTINGS.quality=e.target.value; setQuality(SETTINGS.quality); };
+$('#sView').onchange=e=>{ SETTINGS.view=e.target.value; store.set('rpp_settings', SETTINGS); };
+const VIEW_NAMES={back:'뒤에서', diag:'위', fp:'1인칭'};
+$('#btnView').onclick=()=>{ const o=['back','diag','fp']; SETTINGS.view=o[(o.indexOf(SETTINGS.view||'back')+1)%3]; store.set('rpp_settings', SETTINGS); showMsg('시점: '+VIEW_NAMES[SETTINGS.view], 1.0); };
 $('#sOffset').oninput=e=>{ SETTINGS.offset=+e.target.value; $('#sOffsetV').textContent=SETTINGS.offset; };
 $('#btnMute').onclick=()=>{ SETTINGS.muted=!SETTINGS.muted; SFX.setMuted(SETTINGS.muted); $('#sMute').checked=SETTINGS.muted; store.set('rpp_settings', SETTINGS); };
 
 function showResult(){
   G.screen='result'; hideRhythm(); hide('#hud'); const S=G.stats, win=G.score[G.mySide]>G.score[-G.mySide];
   $('#resTitle').textContent = win?'🏆 승리!':'😢 패배…'; $('#resScore').textContent=`${G.score[G.mySide]} : ${G.score[-G.mySide]}`;
-  const tot=S.PERFECT+S.GREAT+S.GOOD+S.MISS; const acc=tot? Math.round((S.PERFECT+0.7*S.GREAT+0.4*S.GOOD)/tot*100) : 0;
-  $('#resStats').innerHTML=[['PERFECT',S.PERFECT,'P'],['GREAT',S.GREAT,'G'],['GOOD',S.GOOD,'O'],['MISS',S.MISS,'M'],['정확도',acc+'%',''],['최고 콤보',S.maxCombo,''],['최고 구속',(S.maxSpeed*3.6).toFixed(1)+' km/h','']]
+  const tot=S.PERFECT+S.GREAT+S.GOOD+S.BAD+S.MISS; const acc=tot? Math.round((S.PERFECT+0.7*S.GREAT+0.4*S.GOOD+0.2*S.BAD)/tot*100) : 0;
+  $('#resStats').innerHTML=[['PERFECT',S.PERFECT,'P'],['GREAT',S.GREAT,'G'],['GOOD',S.GOOD,'O'],['BAD',S.BAD,'B'],['MISS',S.MISS,'M'],['정확도',acc+'%',''],['최고 콤보',S.maxCombo,''],['최고 구속',(S.maxSpeed*3.6).toFixed(1)+' km/h','']]
     .map(([l,v,c])=>`<div class="stat"><b class="${c}">${v}</b><small>${l}</small></div>`).join('');
   $('#resBtnsAI').classList.toggle('hidden', G.mode!=='ai'); $('#resBtnsMulti').classList.toggle('hidden', G.mode!=='multi');
   G.rematch={me:false,op:false}; updateRematch(); show('#scrResult'); if(win) SFX.cheer(1);
