@@ -71,6 +71,7 @@
   #diffCards { grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); }
   #practiceInfo { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:rgba(5,8,20,.7); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:8px 14px; font-weight:700; font-size:15px; white-space:nowrap; }
   @media (max-width:640px){ #score { gap:8px; padding:5px 10px; max-width:calc(100vw - 120px); } #score .nm { max-width:64px; font-size:12px; } #score .pt { font-size:22px; min-width:22px; } #practiceInfo { font-size:13px; padding:6px 10px; max-width:calc(100vw - 120px); overflow:hidden; } #ping { top:58px; } #topBtns button { width:38px; } }
+  #ver { position:absolute; right:calc(14px + env(safe-area-inset-right, 0px)); bottom:calc(10px + env(safe-area-inset-bottom, 0px)); font-size:13px; opacity:.6; font-weight:700; letter-spacing:.5px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
@@ -107,6 +108,7 @@
       <button class="ghost" id="btnSettings2">설정</button>
     </div>
   </div>
+  <div id="ver">v0.8</div>
 </div>
 
 <div id="scrCustom" class="screen hidden">
@@ -212,7 +214,7 @@
       <label class="f">볼륨 <input type="range" id="sVol" min="0" max="1" step="0.05"></label>
       <label class="f">음소거 <input type="checkbox" id="sMute"></label>
       <label class="f">그래픽 품질 <select id="sQuality"><option value="low">낮음</option><option value="mid">보통</option><option value="high">높음</option></select></label>
-      <label class="f">시점 <select id="sView"><option value="back">뒤에서 (기본)</option><option value="diag">위</option><option value="fp">1인칭</option></select></label>
+      <label class="f">시점 <select id="sView"><option value="back">뒤에서</option><option value="diag">위 (기본)</option><option value="fp">1인칭</option></select></label>
       <label class="f">판정 오프셋 보정 (ms) <span><input type="range" id="sOffset" min="-120" max="120" step="5"> <span id="sOffsetV">0</span></span></label>
       <p class="sub" style="font-size:12px">양수: 판정이 늦게 느껴질 때 / 음수: 빠르게 느껴질 때</p>
     </div>
@@ -234,7 +236,7 @@
       <li><b>위치:</b> 상대가 서 있는 곳의 반대쪽 구석으로 빠르게 보내면 상대가 따라가지 못해 무리한 자세가 되고, 실수 확률이 올라가요. 내 쪽도 마찬가지!</li>
       <li><b>상성:</b> 커트볼엔 터치, 드라이브볼엔 커트, 짧은 공엔 드라이브가 유리해요. 커트볼에 드라이브를 걸면 실수 확률이 커져요.</li>
       <li>판정: <b class="P">PERFECT</b> ±60ms · <b class="G">GREAT</b> ±120ms · <b class="O">GOOD</b> ±180ms · <b class="B">BAD</b> ±240ms · <b class="M">MISS</b> = 실점</li>
-      <li>정확할수록 상대에게 주어지는 반응 시간이 짧아집니다. 7점 선취 승리, 서브는 2점마다 교대.</li>
+      <li>정확할수록 상대에게 주어지는 반응 시간이 짧아집니다. 11점 선취 승리(10:10이 되면 듀스, 2점 차가 나야 승리), 서브는 2점마다 교대(듀스에서는 1점마다).</li>
     </ul>
     <div class="row"><button class="primary" id="btnTutClose">알겠어요!</button></div>
   </div>
@@ -248,7 +250,7 @@
 import * as THREE from 'three';
 
 const CONFIG = {
-  WIN_SCORE: 7, DEUCE: false, SERVE_SWITCH: 2,
+  WIN_SCORE: 11, DEUCE: true, SERVE_SWITCH: 2,
   JUDGE: { PERFECT: 60, GREAT: 120, GOOD: 180, BAD: 240 },
   WINDOW: { BASE: 1.2, MUL: { PERFECT: 0.6, GREAT: 0.8, GOOD: 1.1, BAD: 1.2 }, MIN: 0.35, MAX: 1.8, SPEED_REF: 8 },
   PHYS: { DT: 1/120, G: 9.81, DRAG: 0.11, MAGNUS: 0.004, REST_TABLE: 0.88, REST_FLOOR: 0.55, SPIN_FRICTION: 0.25, SPIN_DECAY_BOUNCE: 0.7, SPIN_AIR_DECAY: 0.1, BALL_R: 0.02, SIDE_KICK: 0.004 },
@@ -617,7 +619,7 @@ function planShot(pos, side, tech, course, power, grade, serve, aiServe, forceOk
 const G = { screen:'title', mode:null, mySide:1, diff:null, score:{1:0,'-1':0}, firstServer:1, paused:false, stats:null, chars:{}, names:{1:'',"-1":''}, weak:null, myCfg:null, oppCfg:null, rematch:{me:false,op:false} };
 let R = { phase:'idle' };
 let simTime = 0;
-const SETTINGS = Object.assign({ volume:0.8, muted:false, quality:'mid', offset:0, view:'back' }, store.get('rpp_settings', {}));
+const SETTINGS = Object.assign({ volume:0.8, muted:false, quality:'mid', offset:0, view:'diag' }, store.get('rpp_settings', {}));
 const chars = G.chars;
 function resetStats(){ G.stats={PERFECT:0,GREAT:0,GOOD:0,BAD:0,MISS:0,combo:0,maxCombo:0,maxSpeed:0}; G.weak={'-1':{s:0,n:0},'0':{s:0,n:0},'1':{s:0,n:0}}; }
 function aiWin(side, win){ if(G.mode!=='ai' || side===G.mySide) return win; const m=CONFIG.AI[G.diff].winMul||1; return Math.min(1.8, Math.max(0.25, win*m)); }
@@ -636,7 +638,8 @@ function startMatch(){
   if(G.mode==='practice') practiceStart(); else if(G.mode!=='multi' || NET.isHost) nextServe(true);
 }
 function nextServe(first){
-  const total=G.score[1]+G.score[-1]; const server=(Math.floor(total/CONFIG.SERVE_SWITCH)%2===0)? G.firstServer : -G.firstServer;
+  const total=G.score[1]+G.score[-1], W=CONFIG.WIN_SCORE, dStart=2*(W-1); let server=(Math.floor(total/CONFIG.SERVE_SWITCH)%2===0)? G.firstServer : -G.firstServer;
+  if(CONFIG.DEUCE && G.score[1]>=W-1 && G.score[-1]>=W-1){ const base=(Math.floor(dStart/CONFIG.SERVE_SWITCH)%2===0)? G.firstServer : -G.firstServer; server=((total-dStart)%2===0)? base : -base; }
   if(G.mode==='multi' && NET.isHost) NET.send({t:'serve', server, score:G.score});
   beginServe(server);
 }
@@ -645,7 +648,7 @@ function beginServe(server){
   ball.p.set(server*0.3, 1.0, server*(HL+0.35)); ball.v.set(0,0,0); ball.w.set(0,0,0); ball.active=true; ball.held=true; ball.floorBounces=0; ball.netDone=false; ball.netFlag=false; ball.resting=false;
   for(const k in chars){ const c=chars[k]; c.targetX=0; c.targetZ=c.side*(HL+0.6); c.state='idle'; c.scratch=false; }
   updateScore(); hideRhythm();
-  showMsg(server===G.mySide? '내 서브' : '상대 서브', 1.0);
+  const inDeuce=CONFIG.DEUCE && G.score[1]>=CONFIG.WIN_SCORE-1 && G.score[-1]>=CONFIG.WIN_SCORE-1; showMsg((inDeuce?'듀스 · ':'')+(server===G.mySide? '내 서브' : '상대 서브'), 1.2);
   $('#hint').textContent = server===G.mySide ? '원에서 시작해 겹칠 때 드래그! 서브: ↑드라이브 ↓커트 ←→횡 탭=짧게' : '공이 오면 원이 나타납니다';
 }
 function doToss(){
@@ -665,8 +668,9 @@ function computeIncoming(side, windowSec){
   }
   if(tB===null) return null;
   const planeZ=HL+CONFIG.HIT_PLANE; let hitT=null, hitP=null;
-  for(const q of path){ if(q.t<=tB) continue; if(side*q.p.z>=planeZ){ hitT=q.t; hitP=q.p; break; } }
-  if(hitT===null){ const tEnd = tSecond!==null? tSecond-0.06 : tFloor!==null? tFloor-0.12 : null; if(tEnd===null) return null;
+  const tLim = tSecond!==null? tSecond-0.2 : Infinity;
+  for(const q of path){ if(q.t<=tB) continue; if(q.t>tLim) break; if(side*q.p.z>=planeZ){ hitT=q.t; hitP=q.p; break; } }
+  if(hitT===null){ const tEnd = tSecond!==null? Math.max(tSecond-0.2, tB+0.05) : tFloor!==null? tFloor-0.12 : null; if(tEnd===null) return null;
     for(const q of path){ if(q.t>=tEnd){ hitT=q.t; hitP=q.p; break; } } if(!hitP){ const q=path[path.length-1]; hitT=q.t; hitP=q.p; } }
   hitP=hitP.clone(); if(hitP.y<T.H+0.04) hitP.y=T.H+0.06;
   return { side, t:simTime+hitT, pos:hitP, window:windowSec, start:simTime+hitT-windowSec, done:false };
@@ -688,7 +692,7 @@ function doHit(side, o){
 }
 function applyHitState(side, pos, v, w, tech, grade, netFlag, serve, win, speed){
   ball.p.copy(pos); ball.v.copy(v); ball.w.copy(w); ball.netDone=false; ball.floorBounces=0; ball.held=false; ball.active=true; ball.resting=false; ball.netFlag=netFlag;
-  R.phase='rally'; R.lastHitter=side; R.bounces=0; R.needOwnBounce=serve; R.serveShot=serve; R.hitWindow=win; R.ai=null; hideRhythm();
+  R.phase='rally'; R.lastHitter=side; R.bounces=0; R.needOwnBounce=serve; R.serveShot=serve; R.aiMissed=false; R.hitWindow=win; R.ai=null; hideRhythm();
   R.incoming = computeIncoming(-side, win); if(R.incoming) R.incoming.kind=tech; R.lastTech=tech;
   const ch=chars[side]; if(ch){ const hand=(pos.x-ch.group.position.x)*side>=-0.05?'fore':'back'; charSwing(ch, tech, hand, 0.3); }
   SFX.hit(speed, grade==='PERFECT', pos.x); if(speed>CONFIG.CAMERA.SHAKE_SPEED) VIEW.shake=clamp((speed-9)/6,0,1);
@@ -714,7 +718,7 @@ function processEvents(ev){
 function onTableBounce(side){
   if(R.needOwnBounce){ if(side===R.lastHitter) R.needOwnBounce=false; else ruleEnd(-R.lastHitter,'서브 폴트'); return; }
   if(side===R.lastHitter){ ruleEnd(-R.lastHitter, R.netHit?'네트':'자기 코트 바운드'); return; }
-  R.bounces++; if(R.bounces>=2){ if(R.serveShot) ruleEnd(-R.lastHitter,'서브 투바운드'); else ruleEnd(R.lastHitter,'투 바운드'); }
+  R.bounces++; if(R.bounces>=2){ ruleEnd(R.lastHitter, R.serveShot?'리턴 실패':'투 바운드'); }
 }
 function onFloor(){ if(R.bounces>=1 && !R.needOwnBounce) ruleEnd(R.lastHitter,'리턴 실패'); else ruleEnd(-R.lastHitter, R.netHit?'네트':'아웃'); }
 function matchOver(){ const a=G.score[1], b=G.score[-1], W=CONFIG.WIN_SCORE; const mx=Math.max(a,b); if(mx<W) return false; return CONFIG.DEUCE ? Math.abs(a-b)>=2 : true; }
@@ -858,7 +862,7 @@ function aiUpdate(){
   const ai=R.ai; if(!ai||ai.done) return; const aiSide=-G.mySide, ch=chars[aiSide];
   if(ai.fake && simTime>ai.hitAt-0.6 && simTime<ai.hitAt-0.25) ch.fakeUntil=performance.now()/1000+0.06;
   if(simTime>=ai.hitAt){ ai.done=true; const inc=R.incoming; if(!inc||inc.side!==aiSide||inc.done) return; inc.done=true;
-    if(ai.grade==='MISS'){ if(Math.random()<0.05) doHit(aiSide, Object.assign({}, ai, {grade:'GOOD', lucky:true})); else charSwing(ch, ai.tech, 'fore', 0.3); return; }
+    if(ai.grade==='MISS'){ if(Math.random()<0.05) doHit(aiSide, Object.assign({}, ai, {grade:'GOOD', lucky:true})); else { charSwing(ch, ai.tech, 'fore', 0.3); R.aiMissed=true; } return; }
     doHit(aiSide, ai); }
 }
 
