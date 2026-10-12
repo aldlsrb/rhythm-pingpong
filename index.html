@@ -108,7 +108,7 @@
       <button class="ghost" id="btnSettings2">설정</button>
     </div>
   </div>
-  <div id="ver">v0.8</div>
+  <div id="ver">v0.12</div>
 </div>
 
 <div id="scrCustom" class="screen hidden">
@@ -158,7 +158,7 @@
     <h2>🎯 연습 모드</h2>
     <p class="sub">기계가 공을 계속 보내줘요. 점수도, 실점도 없어요.</p>
     <div class="col" style="text-align:left">
-      <label class="f">공 종류 <select id="pType"><option value="mix">랜덤</option><option value="drive">드라이브 (빠르고 낮게)</option><option value="cut">커트 (느리고 높게)</option><option value="touch">짧은 공 (네트 앞)</option><option value="lob">높은 공 (스매시 연습)</option></select></label>
+      <label class="f">공 종류 <select id="pType"><option value="mix">랜덤</option><option value="drive">드라이브 (빠르고 낮게)</option><option value="cut">커트 (느리고 높게)</option><option value="touch">짧은 공 (네트 앞)</option><option value="lob">높은 공 (스매시 연습)</option><option value="side">횡회전 공</option></select></label>
       <label class="f">공 속도 <select id="pSpeed"><option value="slow">느림</option><option value="mid" selected>보통</option><option value="fast">빠름</option></select></label>
       <label class="f">공 코스 <select id="pCourse"><option value="rand">랜덤</option><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option><option value="alt">좌우 번갈아</option></select></label>
       <label class="f">공 간격 <span><input type="range" id="pGap" min="0.1" max="2" step="0.1" value="1.4"> <span id="pGapV">1.4초</span></span></label>
@@ -188,6 +188,7 @@
 <div id="scrResult" class="screen hidden">
   <div class="panel" style="text-align:center">
     <h2 id="resTitle">승리!</h2>
+    <div id="resOpp" style="opacity:.85;margin:-6px 0 8px;font-size:15px"></div>
     <div id="resScore" style="font-size:40px;font-weight:900;margin-bottom:6px">7 : 3</div>
     <div class="stats" id="resStats"></div>
     <div class="row" style="justify-content:center" id="resBtnsAI">
@@ -232,7 +233,9 @@
       <li><span class="arrow">•</span> 짧은 탭: <b class="O">터치</b>(네트 앞에 짧게)</li>
       <li>드래그의 <b>좌우 방향</b> = 코스, <b>드래그 속도</b> = 공 속도</li>
       <li><b>서브:</b> ↑ 드라이브서브(빠르고 길게) · ↓ 커트서브(짧고 백스핀) · ←/→ 횡서브(옆으로 휘는 회전) · 탭 = 짧은 서브</li>
+      <li><b>횡회전:</b> 랠리 중 <b>옆으로(←/→) 드래그</b>하면 횡회전 샷! 공이 옆으로 휘고 바운드 후에도 옆으로 튀어서 받기 어려워요.</li>
       <li><b>스매시:</b> 높게 뜬 공에 <b class="M">SMASH!</b> 표시가 뜨면 위로 빠르게 드래그!</li>
+      <li><b>밀림:</b> 빠른 드라이브나 스매시를 받을수록 캐릭터가 탁구대에서 점점 뒤로 밀려요. 그 상태에서 짧은 공이 오면 달려와야 해서 실수 확률이 크게 올라가요. 터치나 커트로 받으면 조금씩 앞으로 돌아와요.</li>
       <li><b>위치:</b> 상대가 서 있는 곳의 반대쪽 구석으로 빠르게 보내면 상대가 따라가지 못해 무리한 자세가 되고, 실수 확률이 올라가요. 내 쪽도 마찬가지!</li>
       <li><b>상성:</b> 커트볼엔 터치, 드라이브볼엔 커트, 짧은 공엔 드라이브가 유리해요. 커트볼에 드라이브를 걸면 실수 확률이 커져요.</li>
       <li>판정: <b class="P">PERFECT</b> ±60ms · <b class="G">GREAT</b> ±120ms · <b class="O">GOOD</b> ±180ms · <b class="B">BAD</b> ±240ms · <b class="M">MISS</b> = 실점</li>
@@ -263,7 +266,7 @@ const CONFIG = {
     cut:   { minSpeed: 4.0, maxSpeed: 6.8,  spin: -190, depth: 0.72 },
     touch: { minSpeed: 3.0, maxSpeed: 4.3,  spin: -40,  depth: 0.38 },
     smash: { minSpeed: 11.0, maxSpeed: 17.0, spin: 60, depth: 0.88 },
-    side:  { minSpeed: 3.2, maxSpeed: 5.4, spin: 60, depth: 0.6, sideSpin: 170 },
+    side:  { minSpeed: 3.2, maxSpeed: 5.4, spin: 60, depth: 0.75, sideSpin: 170 },
   },
   INPUT: { TAP_PX: 15, TAP_MS: 150, SPEED_MIN: 0.25, SPEED_MAX: 2.2 },
   GREAT_ERROR: 0.10, GOOD_PENALTY: { SPEED: 0.8, ERROR: 0.28 },
@@ -574,7 +577,7 @@ const MATCH={
 function matchup(tech, kind){ const r=(MATCH[kind]||{})[tech]; return r? {m:r[0],a:r[1],s:r[2],sp:r[3]} : {m:1,a:0,s:1,sp:1}; }
 function planShot(pos, side, tech, course, power, grade, serve, aiServe, forceOk, kind, strain){
   const S=CONFIG.SHOT[tech]; const mx = serve? {m:1,a:0,s:1,sp:1} : matchup(tech, kind);
-  let speed=lerp(S.minSpeed,S.maxSpeed,power)*mx.s*(1-0.25*(strain||0)); if(grade==='GOOD'||grade==='BAD') speed*=CONFIG.GOOD_PENALTY.SPEED; if(serve) speed=Math.min(speed*0.75, CONFIG.SERVE.cap[tech]||5.5);
+  let speed=lerp(S.minSpeed,S.maxSpeed,power)*mx.s*(1-0.25*(strain||0))*(serve? 1 : (1-0.12*Math.min(1,Math.abs(course)))*(tech==='side'?1.5:1)); if(grade==='GOOD'||grade==='BAD') speed*=CONFIG.GOOD_PENALTY.SPEED; if(serve) speed=Math.min(speed*0.75, CONFIG.SERVE.cap[tech]||5.5);
   const err = (grade==='PERFECT'?0 : grade==='GREAT'?CONFIG.GREAT_ERROR : CONFIG.GOOD_PENALTY.ERROR) + 0.2*(strain||0);
   const tx = clamp(side*course*HW*0.7 + rand(-err,err)*1.3, -(HW-0.1), HW-0.1);
   const depth = serve? (CONFIG.SERVE.depth[tech]||0.72) : S.depth;
@@ -600,12 +603,21 @@ function planShot(pos, side, tech, course, power, grade, serve, aiServe, forceOk
     if(res) return { v:res.v, w, speed:res.v.length(), target:{x:tx,z:tz} };
   }
   let best=null, last=null;
-  for(let i=0;i<5;i++){ const vh=dirH.clone().multiplyScalar(speed); last=solveVy(pos,vh,w,tz,serve?1:0,side,serve,serve); if(last.ok){ best=last; break; } speed*=0.86; }
-  if(!best) best=last;
+  if(S.sideSpin && !serve){
+    const solveAim=(aimX)=>{ const dh=new THREE.Vector3(aimX-pos.x,0,tz-pos.z).normalize(); let sp=speed, bst=null, lst=null;
+      for(let i=0;i<5;i++){ lst=solveVy(pos, dh.clone().multiplyScalar(sp), w, tz, 0, side, false, false); if(lst.ok){ bst=lst; break; } sp*=0.86; }
+      const b=bst||lst; const r=simulate({p:pos, v:b.v, w}, 3); const q=r.tb[0]; return { b, x: q? q.x : tx }; };
+    const aim=clamp(tx-cx*0.3, -(HW-0.05), HW-0.05); let r1=solveAim(aim); const d=tx-r1.x;
+    if(Math.abs(d)>0.08){ const r2=solveAim(clamp(aim+d, -HW, HW)); if(Math.abs(tx-r2.x)<Math.abs(tx-r1.x)) r1=r2; }
+    best=r1.b;
+  } else {
+    for(let i=0;i<5;i++){ const vh=dirH.clone().multiplyScalar(speed); last=solveVy(pos,vh,w,tz,serve?1:0,side,serve,serve); if(last.ok){ best=last; break; } speed*=0.86; }
+    if(!best) best=last;
+  }
   if(!serve){
     const landsOk=(vv)=>{ const r=simulate({p:pos, v:vv, w}, 3); if(r.netT!==Infinity) return false; const q=r.ev.find(e=>e.type==='table'); return !!q && q.side===-side; };
-    const PF={drive:{GREAT:0.10,GOOD:0.15,BAD:0.5},cut:{GREAT:0.03,GOOD:0.05,BAD:0.5},touch:{GREAT:0.05,GOOD:0.08,BAD:0.5},smash:{GREAT:0.12,GOOD:0.22,BAD:0.6}};
-    const pf=clamp(((PF[tech]&&PF[tech][grade])||0)*mx.m+mx.a+0.3*(strain||0), 0, 0.95);
+    const PF={drive:{GREAT:0.10,GOOD:0.15,BAD:0.5},cut:{GREAT:0.03,GOOD:0.05,BAD:0.5},touch:{GREAT:0.05,GOOD:0.08,BAD:0.5},smash:{GREAT:0.12,GOOD:0.22,BAD:0.6},side:{GREAT:0.06,GOOD:0.1,BAD:0.5}};
+    const pf=clamp((((PF[tech]&&PF[tech][grade])||0)*mx.m+mx.a+0.3*(strain||0))*(1-0.4*Math.min(1,Math.abs(course))), 0, 0.95);
     if(forceOk!==true && forceOk!==2 && Math.random()<pf){
       let fv=best.v.clone();
       for(let k=0;k<8;k++){ const v=best.v.clone(); if(Math.random()<0.5){ const f=1.25+0.1*k; v.x*=f; v.z*=f; } else { v.y-=0.8+0.2*k; } fv=v; if(!landsOk(v)) break; }
@@ -646,7 +658,7 @@ function nextServe(first){
 function beginServe(server){
   R={ phase:'serve', server, lastHitter:server, needOwnBounce:true, bounces:0, incoming:null, tossAt:simTime+0.9, tossed:false, ai:null };
   ball.p.set(server*0.3, 1.0, server*(HL+0.35)); ball.v.set(0,0,0); ball.w.set(0,0,0); ball.active=true; ball.held=true; ball.floorBounces=0; ball.netDone=false; ball.netFlag=false; ball.resting=false;
-  for(const k in chars){ const c=chars[k]; c.targetX=0; c.targetZ=c.side*(HL+0.6); c.state='idle'; c.scratch=false; }
+  for(const k in chars){ const c=chars[k]; c.targetX=0; c.targetZ=c.side*(HL+0.6); c.state='idle'; c.scratch=false; c.push=0; }
   updateScore(); hideRhythm();
   const inDeuce=CONFIG.DEUCE && G.score[1]>=CONFIG.WIN_SCORE-1 && G.score[-1]>=CONFIG.WIN_SCORE-1; showMsg((inDeuce?'듀스 · ':'')+(server===G.mySide? '내 서브' : '상대 서브'), 1.2);
   $('#hint').textContent = server===G.mySide ? '원에서 시작해 겹칠 때 드래그! 서브: ↑드라이브 ↓커트 ←→횡 탭=짧게' : '공이 오면 원이 나타납니다';
@@ -678,7 +690,7 @@ function computeIncoming(side, windowSec){
 function doHit(side, o){
   const serve = R.phase==='serve';
   const pos = (R.incoming && R.incoming.side===side)? R.incoming.pos.clone() : ball.p.clone();
-  let strain=0; if(!serve){ const ch0=chars[side]; if(ch0){ const lag=Math.abs(ch0.group.position.x-(pos.x-side*0.12)); strain=clamp((lag-0.25)/0.6,0,1); } }
+  let strain=0; if(!serve){ const ch0=chars[side]; if(ch0){ const lag=Math.hypot(ch0.group.position.x-(pos.x-side*0.12), ch0.group.position.z-(pos.z+side*(0.3+(ch0.push||0)))); strain=clamp((lag-0.25)/0.6,0,1); } }
   if(strain>0.3 && side===G.mySide) showMsg('무리한 자세!', 0.8, '#ff9a3c');
   const plan = planShot(pos, side, o.tech, o.course, o.power, o.grade, serve, serve, o.lucky?true:false, serve? null : ((R.incoming && R.incoming.side===side)? R.incoming.kind : null), strain);
   if(serve && Math.random()<0.01){
@@ -699,7 +711,8 @@ function applyHitState(side, pos, v, w, tech, grade, netFlag, serve, win, speed)
   if(tech==='smash'){ SFX.tone(110,0.25,{gain:0.3,type:'triangle',freqEnd:45,x:pos.x}); VIEW.shake=1; showMsg('SMASH!',0.8,'#ff6b6b'); }
   if(side===G.mySide) G.stats.maxSpeed=Math.max(G.stats.maxSpeed, speed);
   if(G.mode==='ai' && R.incoming && R.incoming.side===-G.mySide) aiPlan();
-  if(R.incoming && chars[R.incoming.side]){ const rc=chars[R.incoming.side]; rc.targetX = R.incoming.pos.x - rc.side*0.12; const inZ=rc.side*R.incoming.pos.z; const back=clamp((speed-7)/6,0,1)*0.7; rc.targetZ = (inZ < HL+0.2 ? R.incoming.pos.z + rc.side*0.5 : rc.side*(HL+0.6)) + rc.side*back; }
+  if(R.incoming && chars[R.incoming.side]){ const rc=chars[R.incoming.side]; rc.targetX = R.incoming.pos.x - rc.side*0.12; const inZ=rc.side*R.incoming.pos.z; if(!serve){ if(tech==='drive'||tech==='smash') rc.push=Math.min(1.5,(rc.push||0)+0.2+0.25*clamp((speed-8)/6,0,1)+(tech==='smash'?0.3:0)); else if(tech==='touch') rc.push=Math.max(0,(rc.push||0)-0.5); else if(tech==='cut') rc.push=Math.max(0,(rc.push||0)-0.25); }
+    const zz=R.incoming.pos.z + rc.side*(0.3+(rc.push||0)); rc.targetZ = rc.side*clamp(rc.side*zz, 0.6, HL+2.4); }
 }
 function doMiss(side, tech){
   if(R.phase==='end') return; const ch=chars[side]; if(ch) charSwing(ch, tech||'drive', 'fore', 0.3);
@@ -782,7 +795,7 @@ function practiceUpdate(){
 function feedBall(){
   if(G.screen!=='playing' || G.mode!=='practice') return;
   const side=-G.mySide, P=G.practice||{type:'mix',speed:'mid'};
-  let tech = P.type==='mix'? weighted({drive:0.45,cut:0.35,touch:0.2}) : P.type; let lob=false; if(tech==='lob'){ tech='cut'; lob=true; }
+  let tech = P.type==='mix'? weighted({drive:0.4,cut:0.3,touch:0.15,side:0.15}) : P.type; let lob=false; if(tech==='lob'){ tech='cut'; lob=true; }
   const rng = {slow:[0.1,0.3], mid:[0.35,0.6], fast:[0.65,0.9]}[P.speed] || [0.35,0.6];
   const power= lob? rand(0.05,0.2) : rand(rng[0],rng[1]); let course;
   if(P.course==='left') course=rand(0.6,0.95); else if(P.course==='right') course=rand(-0.95,-0.6); else if(P.course==='center') course=rand(-0.15,0.15);
@@ -805,7 +818,7 @@ function updateRhythm(){
   sx=clamp(sx,48,innerWidth-48); sy=clamp(sy,96,innerHeight-70);
   tgtScr.x=sx; tgtScr.y=sy; targetEl.style.left=sx+'px'; targetEl.style.top=sy+'px'; approachEl.style.left=sx+'px'; approachEl.style.top=sy+'px';
   targetEl.classList.toggle('serve', R.phase==='serve'); targetEl.dataset.k = R.phase==='serve' ? '' : (inc.kind||''); targetEl.classList.toggle('smash', R.phase!=='serve' && inc.pos.y>=CONFIG.SMASH_Y);
-  if(me && R.phase!=='serve'){ const rem=Math.max(0,inc.t-simTime); const gap=Math.abs(me.group.position.x-(inc.pos.x-G.mySide*0.12)); targetEl.classList.toggle('far', Math.max(0,gap-(me.run||2.4)*rem)>0.25); } else targetEl.classList.remove('far');
+  if(me && R.phase!=='serve'){ const rem=Math.max(0,inc.t-simTime); const gap=Math.hypot(me.group.position.x-(inc.pos.x-G.mySide*0.12), me.group.position.z-(inc.pos.z+G.mySide*(0.3+(me.push||0)))); targetEl.classList.toggle('far', Math.max(0,gap-(me.run||2.4)*rem)>0.25); } else targetEl.classList.remove('far');
   const k=clamp((inc.t-simTime)/inc.window,0,1); const size=78*(1+3.2*k); approachEl.style.width=size+'px'; approachEl.style.height=size+'px';
   const err=Math.abs(inc.t-simTime)*1000; const ac = err<=CONFIG.JUDGE.PERFECT?'#4da3ff' : err<=CONFIG.JUDGE.GREAT?'#4cd964' : err<=CONFIG.JUDGE.GOOD?'#ffd54a' : err<=CONFIG.JUDGE.BAD?'#ff9a3c' : '#ff3b3b'; approachEl.style.borderColor=ac; approachEl.style.boxShadow='0 0 12px '+ac;
   approachEl.style.opacity = simTime>inc.t? String(clamp(1-(simTime-inc.t)/0.2,0,1)) : '1';
@@ -824,9 +837,9 @@ function handleSwipe(a,b){
   const I=CONFIG.INPUT; const dx=b.x-a.x, dy=b.y-a.y, dur=Math.max(1,b.t-a.t), dist=Math.hypot(dx,dy); const norm=720/Math.min(innerWidth,innerHeight);
   let tech, course, power;
   if(dist<I.TAP_PX && dur<I.TAP_MS){ tech='touch'; course=0; power=0.5; }
-  else { course=clamp(dx*norm/220,-1,1); const spd=dist*norm/dur; power=clamp((spd-I.SPEED_MIN)/(I.SPEED_MAX-I.SPEED_MIN),0,1);
+  else { course=clamp(dx*norm/220,-1,1); const spd=((Math.abs(dx)>Math.abs(dy)*1.3)? dist : Math.abs(dy))*norm/dur; power=clamp((spd-I.SPEED_MIN)/(I.SPEED_MAX-I.SPEED_MIN),0,1);
     if(R.phase==='serve'){ tech = Math.abs(dx)>Math.abs(dy)*1.3 ? 'side' : (dy<0?'drive':'cut'); }
-    else { tech = dy<0?'drive':'cut'; const ic=R.incoming; if(tech==='drive' && power>=0.65 && ic && ic.side===G.mySide && !ic.done && ic.pos.y>=CONFIG.SMASH_Y) tech='smash'; } }
+    else { tech = Math.abs(dx)>Math.abs(dy)*1.3 ? 'side' : (dy<0?'drive':'cut'); const ic=R.incoming; if(tech==='drive' && power>=0.65 && ic && ic.side===G.mySide && !ic.done && ic.pos.y>=CONFIG.SMASH_Y) tech='smash'; } }
   const inc=R.incoming;
   if(!inc || inc.side!==G.mySide || inc.done || simTime<inc.start){ if(chars[G.mySide]) charSwing(chars[G.mySide], tech, dx*G.mySide>=0?'fore':'back', 0.3); return; }
   const inputSim = simTime - (performance.now()-b.t)/1000 + SETTINGS.offset/1000;
@@ -846,8 +859,10 @@ function aiPlan(){
   else {
     tech=weighted(prof.tech);
     if(prof.fake && R.aiLastTech==='drive' && Math.random()<0.5) tech='cut';
+    if(Math.random()<[0,0,0,0.08,0.1,0.12,0.15,0.18,0.2][lv]) tech='side';
     const SMART=[0,0,0,0.3,0.45,0.55,0.65,0.8,0.9], COUNTER={cut:'touch', drive:'cut', touch:'drive', side:'drive', smash:'cut'};
     if(inc.kind && COUNTER[inc.kind] && Math.random()<SMART[lv]) tech=COUNTER[inc.kind];
+    const myc=chars[G.mySide], DROP=[0,0,0,0.3,0.4,0.5,0.6,0.7,0.8]; if(myc && (myc.push||0)>0.7 && Math.random()<DROP[lv]) tech='touch';
     const SMASH_P=[0,0,0.15,0.3,0.6,0.35,0.55,0.7,0.8];
     if(inc.pos.y>=CONFIG.SMASH_Y && Math.random()<SMASH_P[lv]) tech='smash';
   }
@@ -1008,7 +1023,8 @@ $('#btnMute').onclick=()=>{ SETTINGS.muted=!SETTINGS.muted; SFX.setMuted(SETTING
 
 function showResult(){
   G.screen='result'; hideRhythm(); hide('#hud'); const S=G.stats, win=G.score[G.mySide]>G.score[-G.mySide];
-  $('#resTitle').textContent = win?'🏆 승리!':'😢 패배…'; $('#resScore').textContent=`${G.score[G.mySide]} : ${G.score[-G.mySide]}`;
+  $('#resTitle').textContent = win?'🏆 승리!':'😢 패배…';
+  { const oppName = G.mode==='ai' ? `${CONFIG.AI[G.diff].icon} ${CONFIG.AI[G.diff].name}` : (G.names[-G.mySide]||'상대'); $('#resOpp').textContent = win ? `${oppName} 상대로 승리` : `${oppName}에게 패배`; } $('#resScore').textContent=`${G.score[G.mySide]} : ${G.score[-G.mySide]}`;
   const tot=S.PERFECT+S.GREAT+S.GOOD+S.BAD+S.MISS; const acc=tot? Math.round((S.PERFECT+0.7*S.GREAT+0.4*S.GOOD+0.2*S.BAD)/tot*100) : 0;
   $('#resStats').innerHTML=[['PERFECT',S.PERFECT,'P'],['GREAT',S.GREAT,'G'],['GOOD',S.GOOD,'O'],['BAD',S.BAD,'B'],['MISS',S.MISS,'M'],['정확도',acc+'%',''],['최고 콤보',S.maxCombo,''],['최고 구속',(S.maxSpeed*3.6).toFixed(1)+' km/h','']]
     .map(([l,v,c])=>`<div class="stat"><b class="${c}">${v}</b><small>${l}</small></div>`).join('');
