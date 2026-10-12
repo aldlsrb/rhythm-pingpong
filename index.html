@@ -90,7 +90,7 @@
   </div>
   <div id="practiceInfo" class="hidden"></div>
   <div id="ping" class="hidden">ping --</div>
-  <div id="topBtns"><button id="btnPause" title="일시정지">⏸</button><button id="btnSettings" title="설정">⚙</button><button id="btnMute" title="음소거">🔊</button><button id="btnView" title="시점 변경">🎥</button><button id="btnPracticeSet" class="hidden" title="연습 설정">🎛</button></div>
+  <div id="topBtns"><button id="btnPause" title="일시정지">⏸</button><button id="btnSettings" title="설정">⚙</button><button id="btnMute" title="음소거">🔊</button><button id="btnView" title="시점 변경">🎥</button><button id="btnPracticeSet" class="hidden" title="훈련 설정">🎛</button></div>
   <div id="judge"></div>
   <div id="combo"></div>
   <div id="techTag"></div>
@@ -112,7 +112,7 @@
       <button class="ghost" id="btnSettings2">설정</button>
     </div>
   </div>
-  <div id="ver">v0.18</div>
+  <div id="ver">v0.16</div>
 </div>
 
 <div id="scrCustom" class="screen hidden">
@@ -143,7 +143,7 @@
     <div class="cards">
       <button class="card" id="btnModeAI"><div class="ic">🤖</div><b>싱글 플레이</b><small>8단계 난이도의 개성 있는 AI와 대결</small></button>
       <button class="card" id="btnModeMulti"><div class="ic">🌐</div><b>멀티 플레이</b><small>방 코드로 친구와 P2P 실시간 대전</small></button>
-      <button class="card" id="btnModePractice"><div class="ic">🎯</div><b>연습 모드</b><small>공을 계속 보내주는 기계와 점수 없이 연습</small></button>
+      <button class="card" id="btnModePractice"><div class="ic">🎯</div><b>연습 모드</b><small>혼자 실력을 갈고닦는 연습 메뉴</small></button>
     </div>
     <div class="row" style="justify-content:center;margin-top:14px"><button class="ghost" id="btnModeChar">캐릭터 수정</button><button class="ghost" id="btnModeTitle">타이틀로</button></div>
   </div>
@@ -157,9 +157,19 @@
   </div>
 </div>
 
+<div id="scrPracSel" class="screen hidden">
+  <div class="panel">
+    <h2>🎯 연습 모드</h2>
+    <div class="cards" id="pracCards">
+      <button class="card" id="btnTrain"><div class="ic">🏋️</div><b>훈련</b><small>공을 계속 보내주는 기계와 점수 없이 훈련</small></button>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="ghost" id="btnPracSelBack">뒤로</button></div>
+  </div>
+</div>
+
 <div id="scrPractice" class="screen hidden">
   <div class="panel" style="text-align:center">
-    <h2>🎯 연습 모드</h2>
+    <h2>🏋️ 훈련</h2>
     <p class="sub">기계가 공을 계속 보내줘요. 점수도, 실점도 없어요.</p>
     <div class="col" style="text-align:left">
       <label class="f">공 종류 <select id="pType"><option value="mix">랜덤</option><option value="drive">드라이브 (빠르고 낮게)</option><option value="cut">커트 (느리고 높게)</option><option value="touch">짧은 공 (네트 앞)</option><option value="lob">높은 공 (스매시 연습)</option><option value="side">횡회전 공</option></select></label>
@@ -582,7 +592,7 @@ function matchup(tech, kind){ const r=(MATCH[kind]||{})[tech]; return r? {m:r[0]
 function planShot(pos, side, tech, course, power, grade, serve, aiServe, forceOk, kind, strain){
   const S=CONFIG.SHOT[tech]; const mx = serve? {m:1,a:0,s:1,sp:1} : matchup(tech, kind);
   let speed=lerp(S.minSpeed,S.maxSpeed,power)*mx.s*(1-0.25*(strain||0))*(serve? 1 : (1-0.12*Math.min(1,Math.abs(course)))*(tech==='side'?1.5:1)); if(grade==='GOOD'||grade==='BAD') speed*=CONFIG.GOOD_PENALTY.SPEED; if(serve) speed=Math.min(speed*0.75, CONFIG.SERVE.cap[tech]||5.5);
-  const err = (grade==='PERFECT'?0 : grade==='GREAT'?CONFIG.GREAT_ERROR : CONFIG.GOOD_PENALTY.ERROR) + 0.3*(strain||0);
+  const err = (grade==='PERFECT'?0 : grade==='GREAT'?CONFIG.GREAT_ERROR : CONFIG.GOOD_PENALTY.ERROR) + 0.2*(strain||0);
   const tx = clamp(side*course*HW*0.7 + rand(-err,err)*1.3, -(HW-0.1), HW-0.1);
   const depth = serve? (CONFIG.SERVE.depth[tech]||0.72) : S.depth;
   const tz = -side*clamp(HL*depth + rand(-err,err), 0.25, HL-0.15);
@@ -629,7 +639,7 @@ function planShot(pos, side, tech, course, power, grade, serve, aiServe, forceOk
         if(bs) break; }
       return bs; };
     const PF={drive:{GREAT:0.10,GOOD:0.15,BAD:0.5},cut:{GREAT:0.03,GOOD:0.05,BAD:0.5},touch:{GREAT:0.05,GOOD:0.08,BAD:0.5},smash:{GREAT:0.12,GOOD:0.22,BAD:0.6},side:{GREAT:0.06,GOOD:0.1,BAD:0.5}};
-    const pf=grade==='PERFECT'? 0 : clamp((((PF[tech]&&PF[tech][grade])||0)*mx.m+mx.a+0.45*(strain||0))*(1-0.4*Math.min(1,Math.abs(course))), 0, 0.95);
+    const pf=grade==='PERFECT'? 0 : clamp((((PF[tech]&&PF[tech][grade])||0)*mx.m+mx.a+0.3*(strain||0))*(1-0.4*Math.min(1,Math.abs(course))), 0, 0.95);
     if(forceOk!==true && forceOk!==2 && Math.random()<pf){
       let fv=best.v.clone();
       for(let k=0;k<8;k++){ const v=best.v.clone(); if(Math.random()<0.5){ const f=1.25+0.1*k; v.x*=f; v.z*=f; } else { v.y-=0.8+0.2*k; } fv=v; if(!landsOk(v)) break; }
@@ -800,9 +810,9 @@ function openPracticeSettings(live){
 function practiceStart(){
   R={phase:'end', nextFeedAt:simTime+1.2}; ball.active=false; if(machine) machine.group.visible=true;
   $('#hint').textContent='기계가 보내는 공을 계속 쳐보세요! 원이 겹칠 때 드래그';
-  showMsg('연습 시작!', 1.0); updatePractice();
+  showMsg('훈련 시작!', 1.0); updatePractice();
 }
-function updatePractice(){ const S=G.stats; $('#practiceInfo').innerHTML=`🎯 연습 모드 &nbsp; <span class="P">P ${S.PERFECT}</span> <span class="G">G ${S.GREAT}</span> <span class="O">O ${S.GOOD}</span> <span class="B">B ${S.BAD}</span> <span class="M">M ${S.MISS}</span>`; }
+function updatePractice(){ const S=G.stats; $('#practiceInfo').innerHTML=`🏋️ 훈련 &nbsp; <span class="P">P ${S.PERFECT}</span> <span class="G">G ${S.GREAT}</span> <span class="O">O ${S.GOOD}</span> <span class="B">B ${S.BAD}</span> <span class="M">M ${S.MISS}</span>`; }
 function practiceUpdate(){
   if(R.phase==='end'){ if(R.nextFeedAt!==undefined && simTime>=R.nextFeedAt) feedBall(); }
   else if(R.phase==='rally' && simTime-R.feedT>8){ R.phase='end'; R.incoming=null; hideRhythm(); R.nextFeedAt=simTime+0.5; }
@@ -893,9 +903,6 @@ function aiUpdate(){
   if(ai.fake && simTime>ai.hitAt-0.6 && simTime<ai.hitAt-0.25) ch.fakeUntil=performance.now()/1000+0.06;
   if(simTime>=ai.hitAt){ ai.done=true; const inc=R.incoming; if(!inc||inc.side!==aiSide||inc.done) return; inc.done=true;
     if(ai.grade==='MISS'){ charSwing(ch, ai.tech, 'fore', 0.3); R.aiMissed=true; return; }
-    { const lag=Math.hypot(ch.group.position.x-(inc.pos.x-aiSide*0.12), ch.group.position.z-(inc.pos.z+aiSide*(0.3+(ch.push||0)))); const st=clamp((lag-0.25)/0.6,0,1);
-      const steps=(Math.random()<st?1:0)+(Math.random()<st*st?1:0);
-      if(steps){ const order=['PERFECT','GREAT','GOOD','BAD']; const gi=order.indexOf(ai.grade); if(gi>=0) ai.grade=order[Math.min(3,gi+steps)]; } }
     doHit(aiSide, ai); }
 }
 
@@ -954,7 +961,7 @@ const NET = {
   }
 };
 
-const SCREENS=['#scrTitle','#scrCustom','#scrMode','#scrDiff','#scrLobby','#scrPractice','#scrResult','#scrPause','#scrSettings','#scrTut','#notice'];
+const SCREENS=['#scrTitle','#scrCustom','#scrMode','#scrDiff','#scrLobby','#scrPracSel','#scrPractice','#scrResult','#scrPause','#scrSettings','#scrTut','#notice'];
 function hideAllScreens(){ SCREENS.forEach(hide); }
 function gotoScreen(name){
   hideAllScreens(); hide('#hud'); hideRhythm(); G.paused=false; if(machine) machine.group.visible=false;
@@ -963,6 +970,7 @@ function gotoScreen(name){
   if(name==='custom'){ show('#scrCustom'); loadCustomForm(); }
   if(name==='mode'){ show('#scrMode'); NET.cleanup(); SFX.tensionStop(); setHardcoreLook(false); }
   if(name==='diff') show('#scrDiff');
+  if(name==='pracsel') show('#scrPracSel');
   if(name==='practice') openPracticeSettings(false);
   if(name==='lobby'){ show('#scrLobby'); show('#lobbyMenu'); hide('#lobbyHost'); $('#lobbyStatus').textContent=''; }
 }
@@ -999,7 +1007,7 @@ $('#btnStart').onclick=()=>{ SFX.init(); gotoScreen(store.get('rpp_char',null)?'
 $('#btnTut').onclick=()=>show('#scrTut'); $('#btnTutClose').onclick=()=>{ hide('#scrTut'); store.set('rpp_tut',true); };
 $('#btnModeChar').onclick=()=>gotoScreen('custom'); $('#btnModeTitle').onclick=()=>gotoScreen('title');
 $('#btnModeAI').onclick=()=>gotoScreen('diff'); $('#btnDiffBack').onclick=()=>gotoScreen('mode');
-$('#btnModeMulti').onclick=()=>gotoScreen('lobby'); $('#btnModePractice').onclick=()=>gotoScreen('practice'); $('#btnPracticeBack').onclick=()=>gotoScreen('mode');
+$('#btnModeMulti').onclick=()=>gotoScreen('lobby'); $('#btnModePractice').onclick=()=>gotoScreen('pracsel'); $('#btnPracSelBack').onclick=()=>gotoScreen('mode'); $('#btnTrain').onclick=()=>gotoScreen('practice'); $('#btnPracticeBack').onclick=()=>gotoScreen('pracsel');
 $('#btnPracticeStart').onclick=()=>{ SFX.init(); G.mode='practice'; G.diff=null; G.mySide=1; G.practice=readPractice(); setupPractice(); startMatch(); };
 $('#pGap').oninput=()=>{ $('#pGapV').textContent=(+$('#pGap').value).toFixed(1)+'초'; };
 $('#btnPracticeSet').onclick=()=>{ if(G.mode!=='practice'||G.screen!=='playing') return; openPracticeSettings(true); };
@@ -1018,7 +1026,7 @@ const AI_CHARS={
   master:{name:'마스터',skin:'#f7dcc4',hair:1,hairColor:'#c0392b',top:'#a855f7',bottom:'#111111',acc:'band',height:1.1,bulk:0.95,rubber:'custom',rubberColor:'#8b5cf6'},
   grand:{name:'그랜드 스매시',skin:'#cfd6e6',hair:1,hairColor:'#f1f1f1',top:'#111111',bottom:'#111111',acc:'none',height:1.12,bulk:0.9,rubber:'custom',rubberColor:'#8b0000'},
 };
-function startAI(d){ G.mode='ai'; G.diff=d; G.mySide=1; const c=Object.assign({},AI_CHARS[d]); c.name=`LV${CONFIG.AI[d].lv} ${c.name}`; setupCharacters(G.myCfg, c); if(chars[-G.mySide]) chars[-G.mySide].run=1.3+0.1*CONFIG.AI[d].lv; startMatch(); showBubble('op', choice(CONFIG.AI[d].lines), 2.5); }
+function startAI(d){ G.mode='ai'; G.diff=d; G.mySide=1; const c=Object.assign({},AI_CHARS[d]); c.name=`LV${CONFIG.AI[d].lv} ${c.name}`; setupCharacters(G.myCfg, c); startMatch(); showBubble('op', choice(CONFIG.AI[d].lines), 2.5); }
 
 $('#btnHost').onclick=()=>{ G.mode='multi'; hide('#lobbyMenu'); show('#lobbyHost'); NET.host(); };
 $('#btnJoin').onclick=()=>{ const c=$('#joinCode').value.trim(); if(c.length!==6){ $('#lobbyStatus').textContent='6자리 코드를 입력하세요'; return; } G.mode='multi'; NET.join(c); };
