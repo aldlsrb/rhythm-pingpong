@@ -112,7 +112,7 @@
       <button class="ghost" id="btnSettings2">설정</button>
     </div>
   </div>
-  <div id="ver">v0.19</div>
+  <div id="ver">v0.23</div>
 </div>
 
 <div id="scrCustom" class="screen hidden">
@@ -400,76 +400,127 @@ function randomChar(){
   return { name: choice(['불꽃이','스매셔','탁구왕','핑퐁요정','회전마','네트킬러','바운스','스핀짱'])+Math.floor(rand(1,99)), skin:choice(skins), hair:Math.floor(rand(0,HAIR_NAMES.length)), hairColor:choice(hairs), top:choice(cols), bottom:choice(cols), acc:choice(Object.keys(ACC_NAMES)), height:+rand(0.88,1.12).toFixed(2), bulk:+rand(0.85,1.2).toFixed(2), rubber:rub, rubberColor:choice(['#ff2e2e','#2e7bff','#8b5cf6','#10b981','#f472b6']) };
 }
 const POSES = {
-  rest:[-0.5,0.35,0], ready:[-0.3,0.7,0.15],
-  fore:{ drive:[[0.5,1.0,0.5],[-0.7,0.6,0],[-1.7,-0.4,-0.5]], cut:[[-1.8,1.0,0.4],[-0.7,0.6,0],[0.1,0.2,-0.3]], touch:[[-0.4,0.6,0.1],[-0.9,0.5,0],[-1.1,0.4,-0.1]], smash:[[-2.6,0.9,0.5],[-0.9,0.5,0],[0.3,0.1,-0.5]] },
-  back:{ drive:[[-0.3,-0.7,-0.5],[-0.9,0.2,0],[-1.4,1.2,0.5]], cut:[[-1.6,-0.7,-0.4],[-0.8,0.3,0],[-0.1,1.0,0.3]], touch:[[-0.6,-0.4,-0.1],[-0.9,0.2,0],[-1.0,0.4,0.1]], smash:[[-2.4,-0.6,-0.5],[-0.9,0.3,0],[0.2,0.9,0.4]] },
+  // [어깨X, 어깨Z, 상체비틀기, 팔꿈치, 무릎굽힘(몸 낮춤), 상체 앞기울임]
+  rest:[-0.5,0.35,0,0.5,0,0], ready:[-0.7,0.8,0.2,1.4,0.08,0.2],
+  fore:{ drive:[[0.4,1.0,0.6,1.5,0.06,0.15],[-0.9,0.6,0.0,0.8,0.10,0.28],[-1.9,-0.3,-0.7,0.5,0.03,0.1]],
+         cut:[[-1.9,1.0,0.5,1.2,0.04,0.1],[-0.8,0.6,0.0,0.9,0.08,0.3],[0.0,0.2,-0.3,0.4,0.05,0.2]],
+         touch:[[-0.5,0.6,0.15,1.3,0.05,0.2],[-0.9,0.5,0.0,1.0,0.1,0.32],[-1.0,0.4,-0.1,0.9,0.07,0.25]],
+         smash:[[-2.6,0.9,0.5,1.2,0.05,0.0],[-2.6,0.5,0.1,0.15,0.04,0.2],[0.3,0.1,-0.6,0.3,0.1,0.35]] },
+  back:{ drive:[[-0.3,-0.7,-0.5,1.3,0.06,0.15],[-0.9,0.2,0.0,0.8,0.10,0.25],[-1.4,1.2,0.5,0.5,0.03,0.1]],
+         cut:[[-1.6,-0.7,-0.4,1.2,0.04,0.1],[-0.8,0.3,0.0,0.9,0.08,0.3],[-0.1,1.0,0.3,0.4,0.05,0.2]],
+         touch:[[-0.6,-0.4,-0.1,1.3,0.05,0.2],[-0.9,0.2,0.0,1.0,0.1,0.3],[-1.0,0.4,0.1,0.9,0.07,0.25]],
+         smash:[[-2.4,-0.6,-0.5,1.2,0.05,0.0],[-2.4,-0.2,-0.1,0.15,0.04,0.2],[0.2,0.9,0.4,0.3,0.1,0.35]] },
 };
+const RACKET_ROT={ drive:[-0.9,0.5], cut:[-1.6,0.2], touch:[-1.3,0.3], smash:[-1.0,0.6], side:[-1.2,0.9] };
+let _toonGrad=null;
+function toonGrad(){ if(!_toonGrad){ _toonGrad=new THREE.DataTexture(new Uint8Array([95,150,210,255]),4,1,THREE.RedFormat); _toonGrad.minFilter=_toonGrad.magFilter=THREE.NearestFilter; _toonGrad.needsUpdate=true; } return _toonGrad; }
+const OUTLINE_MAT=new THREE.MeshBasicMaterial({color:0x14141c, side:THREE.BackSide});
 function makeCharacter(cfg){
   const h=cfg.height, b=cfg.bulk; const g=new THREE.Group();
-  const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:0.75}, o));
-  const skin=M(cfg.skin), top=M(cfg.top), bottom=M(cfg.bottom), hair=M(cfg.hairColor), dark=M('#111111');
-  const add=(geo,mat,x,y,z,parent=g)=>{ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.castShadow=true; parent.add(m); return m; };
-  const legGeo=new THREE.CapsuleGeometry(0.06*b, 0.38*h, 4, 10);
-  const legL=add(legGeo, skin, -0.09*b, 0.3*h, 0), legR=add(legGeo, skin, 0.09*b, 0.3*h, 0);
-  add(new THREE.CylinderGeometry(0.19*b,0.2*b,0.2*h,14), bottom, 0, 0.62*h, 0);
-  const torso=new THREE.Group(); torso.position.y=0.7*h; g.add(torso);
-  add(new THREE.CapsuleGeometry(0.17*b, 0.34*h, 6, 14), top, 0, 0.27*h, 0, torso);
-  const head=new THREE.Group(); head.position.y=0.76*h; torso.add(head);
-  add(new THREE.SphereGeometry(0.13,20,16), skin, 0,0.04,0, head);
-  const eyeGeo=new THREE.SphereGeometry(0.018,8,8); add(eyeGeo,dark,-0.045,0.06,-0.115,head); add(eyeGeo,dark,0.045,0.06,-0.115,head);
-  add(new THREE.SphereGeometry(0.02,8,8), M('#ee5588'), 0,0.0,-0.125, head).scale.set(1.4,0.6,0.6);
+  const M=(c,o={})=>new THREE.MeshToonMaterial(Object.assign({color:c, gradientMap:toonGrad()}, o));
+  const skin=M(cfg.skin), top=M(cfg.top), bottom=M(cfg.bottom), hair=M(cfg.hairColor), dark=M('#1a1a22'), white=M('#fafafa');
+  // 툰 렌더링: 모든 덩어리에 검은 외곽선(뒤집은 껍질) 추가
+  const add=(geo,mat,x,y,z,parent=g,ol=true)=>{ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.castShadow=true; parent.add(m);
+    if(ol){ geo.computeBoundingSphere(); const r=geo.boundingSphere.radius; if(r>0.03){ const o=new THREE.Mesh(geo,OUTLINE_MAT); o.scale.setScalar(1+0.013/r); m.add(o); } } return m; };
+  // 다리 + 신발
+  const legGeo=new THREE.CapsuleGeometry(0.06*b, 0.22*h, 4, 10);
+  const legL=add(legGeo, skin, -0.09*b, 0.23*h, 0), legR=add(legGeo, skin, 0.09*b, 0.23*h, 0);
+  for(const lg of [legL,legR]){ const shoe=add(new THREE.SphereGeometry(0.075,12,8), white, 0,-0.11*h-0.05,-0.025, lg); shoe.scale.set(1.0*b,0.6,1.5); const sole=add(new THREE.SphereGeometry(0.07,10,6), top, 0,-0.11*h-0.078,-0.025, lg, false); sole.scale.set(1.0*b,0.25,1.45); }
+  add(new THREE.CylinderGeometry(0.19*b,0.2*b,0.16*h,14), bottom, 0, 0.42*h, 0);
+  for(const sx of [-1,1]){ add(new THREE.BoxGeometry(0.014,0.14*h,0.2*b), white, sx*0.197*b, 0.42*h, 0, g, false); }
+  // 상체
+  const torso=new THREE.Group(); torso.position.y=0.5*h; g.add(torso);
+  add(new THREE.CapsuleGeometry(0.17*b, 0.22*h, 6, 14), top, 0, 0.17*h, 0, torso);
+  const emblem=add(new THREE.CircleGeometry(0.045,16), white, 0, 0.25*h, -0.172*b, torso, false); emblem.rotation.y=Math.PI; emblem.material=M('#ffffff',{side:THREE.DoubleSide});
+  // 머리 (카툰: 살짝 큰 머리)
+  const head=new THREE.Group(); head.position.y=0.3*h+0.27; head.scale.setScalar(1.35); torso.add(head);
+  add(new THREE.SphereGeometry(0.13,24,18), skin, 0,0.04,0, head);
+  for(const sx of [-1,1]){ const ear=add(new THREE.SphereGeometry(0.03,10,8), skin, sx*0.128,0.03,0, head); ear.scale.set(0.6,1,1); }
+  const nose=add(new THREE.SphereGeometry(0.014,8,6), skin, 0,0.012,-0.13, head, false); nose.scale.set(1,0.8,0.8);
+  // 얼굴: 흰자 + 눈동자 + 하이라이트, 볼터치, 입, 굵은 눈썹
+  const makeEye=(sx)=>{ const e=new THREE.Group(); e.position.set(sx*0.05,0.055,-0.117); head.add(e);
+    const sc=add(new THREE.SphereGeometry(0.026,14,10), white, 0,0,0, e, false); sc.scale.set(1,1.25,0.5);
+    const pu=add(new THREE.SphereGeometry(0.0135,12,8), dark, sx*-0.002,-0.002,-0.008, e, false); pu.scale.set(1,1.3,0.5);
+    const hi=new THREE.Mesh(new THREE.SphereGeometry(0.0052,8,6), new THREE.MeshBasicMaterial({color:0xffffff})); hi.position.set(0.005,0.008,-0.0125); e.add(hi); return e; };
+  const eyeL=makeEye(-1), eyeR=makeEye(1);
+  const cheekM=M('#ff8fa3',{transparent:true,opacity:0.5});
+  for(const sx of [-1,1]){ const ck=add(new THREE.SphereGeometry(0.02,10,8), cheekM, sx*0.088,-0.012,-0.106, head, false); ck.scale.set(1,0.7,0.35); ck.castShadow=false; }
+  const mouth=add(new THREE.TorusGeometry(0.024,0.006,6,14,Math.PI), M('#5a2323'), 0,-0.024,-0.125, head, false); mouth.rotation.z=Math.PI;
+  const browGeo=new THREE.BoxGeometry(0.04,0.01,0.008);
+  const browL=add(browGeo,hair,-0.052,0.093,-0.122,head,false), browR=add(browGeo,hair,0.052,0.093,-0.122,head,false);
+  // 헤어스타일 5종
   const hs=cfg.hair|0;
   if(hs===0){ add(new THREE.SphereGeometry(0.135,20,12,0,Math.PI*2,0,Math.PI*0.5), hair, 0,0.05,0,head); }
   else if(hs===1){ add(new THREE.SphereGeometry(0.14,20,12,0,Math.PI*2,0,Math.PI*0.55), hair, 0,0.05,0,head); add(new THREE.CylinderGeometry(0.12,0.1,0.32,14), hair, 0,-0.08,0.06,head); }
-  else if(hs===2){ add(new THREE.SphereGeometry(0.135,20,12,0,Math.PI*2,0,Math.PI*0.5), hair, 0,0.05,0,head); add(new THREE.CapsuleGeometry(0.04,0.22,4,8), hair, 0,-0.06,0.15,head).rotation.x=0.5; add(new THREE.TorusGeometry(0.045,0.012,6,12), M('#ff5c8a'), 0,0.07,0.13,head).rotation.x=Math.PI/2; }
+  else if(hs===2){ add(new THREE.SphereGeometry(0.135,20,12,0,Math.PI*2,0,Math.PI*0.5), hair, 0,0.05,0,head); add(new THREE.CapsuleGeometry(0.04,0.22,4,8), hair, 0,-0.06,0.15,head).rotation.x=0.5; add(new THREE.TorusGeometry(0.045,0.012,6,12), M('#ff5c8a'), 0,0.07,0.13,head, false).rotation.x=Math.PI/2; }
   else if(hs===3){ for(let i=0;i<7;i++){ const a=i/7*Math.PI*2; const c=add(new THREE.ConeGeometry(0.05,0.17,6), hair, Math.cos(a)*0.08, 0.15, Math.sin(a)*0.08, head); c.rotation.set(Math.sin(a)*0.6,0,-Math.cos(a)*0.6);} add(new THREE.ConeGeometry(0.06,0.22,6), hair, 0,0.2,0,head); }
-  else { add(new THREE.SphereGeometry(0.145,20,12,0,Math.PI*2,0,Math.PI*0.62), hair, 0,0.04,0,head); add(new THREE.CylinderGeometry(0.145,0.14,0.12,16,1,true), hair, 0,-0.03,0,head).material.side=THREE.DoubleSide; }
-  if(cfg.acc==='band'){ add(new THREE.TorusGeometry(0.135,0.018,8,24), M('#ff3b3b'), 0,0.07,0,head).rotation.x=Math.PI/2; }
-  if(cfg.acc==='glasses'){ const gm=M('#222222'); add(new THREE.TorusGeometry(0.035,0.006,6,16), gm, -0.048,0.06,-0.125,head); add(new THREE.TorusGeometry(0.035,0.006,6,16), gm, 0.048,0.06,-0.125,head); add(new THREE.BoxGeometry(0.03,0.006,0.006), gm, 0,0.06,-0.125,head); }
-  if(cfg.acc==='cap'){ const cm=M('#1e90ff'); add(new THREE.SphereGeometry(0.14,18,10,0,Math.PI*2,0,Math.PI*0.5), cm, 0,0.05,0,head); add(new THREE.BoxGeometry(0.2,0.015,0.12), cm, 0,0.06,-0.17,head); }
-  const armL=new THREE.Group(); armL.position.set(-0.22*b, 0.5*h, 0); torso.add(armL);
-  add(new THREE.CapsuleGeometry(0.045*b, 0.28*h, 4, 8), skin, 0,-0.16*h,0, armL);
-  const armR=new THREE.Group(); armR.position.set(0.22*b, 0.5*h, 0); torso.add(armR);
-  add(new THREE.CapsuleGeometry(0.045*b, 0.28*h, 4, 8), skin, 0,-0.16*h,0, armR);
-  const racket=new THREE.Group(); racket.position.set(0,-0.34*h,0); armR.add(racket);
-  add(new THREE.CylinderGeometry(0.014,0.016,0.1,8), M('#c9a36b'), 0,-0.02,0, racket);
+  else { add(new THREE.SphereGeometry(0.145,20,12,0,Math.PI*2,0,Math.PI*0.62), hair, 0,0.04,0,head); add(new THREE.CylinderGeometry(0.145,0.14,0.12,16,1,true), hair, 0,-0.03,0,head, false).material.side=THREE.DoubleSide; }
+  // 액세서리
+  if(cfg.acc==='band'){ add(new THREE.TorusGeometry(0.135,0.018,8,24), M('#ff3b3b'), 0,0.07,0,head, false).rotation.x=Math.PI/2; }
+  if(cfg.acc==='glasses'){ const gm=M('#222222'); add(new THREE.TorusGeometry(0.036,0.006,6,16), gm, -0.052,0.058,-0.137,head,false); add(new THREE.TorusGeometry(0.036,0.006,6,16), gm, 0.052,0.058,-0.137,head,false); add(new THREE.BoxGeometry(0.03,0.006,0.006), gm, 0,0.058,-0.137,head,false); }
+  if(cfg.acc==='cap'){ const cm=M('#1e90ff'); add(new THREE.SphereGeometry(0.14,18,10,0,Math.PI*2,0,Math.PI*0.5), cm, 0,0.05,0,head); add(new THREE.BoxGeometry(0.2,0.015,0.12), cm, 0,0.06,-0.17,head, false); }
+  // 팔 (어깨 - 팔꿈치 - 손)
+  const makeArm=(sx)=>{ const arm=new THREE.Group(); arm.position.set(sx*0.21*b, 0.3*h, 0); torso.add(arm);
+    add(new THREE.CapsuleGeometry(0.05*b, 0.07*h, 4, 8), skin, 0,-0.07*h,0, arm);
+    add(new THREE.CylinderGeometry(0.062*b,0.068*b,0.08*h,10), top, 0,-0.035*h,0, arm);
+    const elbow=new THREE.Group(); elbow.position.y=-0.14*h; arm.add(elbow);
+    add(new THREE.CapsuleGeometry(0.045*b, 0.08*h, 4, 8), skin, 0,-0.07*h,0, elbow);
+    add(new THREE.SphereGeometry(0.06,10,8), skin, 0,-0.15*h,0, elbow);
+    arm.userData.elbow=elbow; return arm; };
+  const armL=makeArm(-1), armR=makeArm(1); const elbowL=armL.userData.elbow, elbowR=armR.userData.elbow;
+  // 라켓 (팔꿈치 아래 팔뚝에 부착)
+  const racket=new THREE.Group(); racket.position.set(0,-0.17*h,0); racket.scale.setScalar(1.1); elbowR.add(racket);
+  add(new THREE.CylinderGeometry(0.014,0.016,0.1,8), M('#c9a36b'), 0,-0.02,0, racket, false);
   const rubF = cfg.rubber==='red'?'#e11d1d':cfg.rubber==='black'?'#151515':cfg.rubberColor; const rubB = cfg.rubber==='black'?'#e11d1d':'#151515';
   const blade=add(new THREE.CylinderGeometry(0.08,0.08,0.012,20), M('#d9b982'), 0,-0.16,0, racket); blade.rotation.x=Math.PI/2;
-  const rf=add(new THREE.CylinderGeometry(0.079,0.079,0.004,20), M(rubF), 0,-0.16,-0.008, racket); rf.rotation.x=Math.PI/2;
-  const rb=add(new THREE.CylinderGeometry(0.079,0.079,0.004,20), M(rubB), 0,-0.16,0.008, racket); rb.rotation.x=Math.PI/2;
+  const rf=add(new THREE.CylinderGeometry(0.079,0.079,0.004,20), M(rubF), 0,-0.16,-0.008, racket, false); rf.rotation.x=Math.PI/2;
+  const rb=add(new THREE.CylinderGeometry(0.079,0.079,0.004,20), M(rubB), 0,-0.16,0.008, racket, false); rb.rotation.x=Math.PI/2;
   racket.rotation.set(-1.2,0,0.3);
-  return { group:g, torso, head, armL, armR, legL, legR, racket, cfg, h, b,
-    side:1, targetX:0, targetZ:0, state:'idle', swing:null, fakeUntil:0, stateUntil:0, cur:[-0.5,0.35,0], bob:0, moveT:0, scratch:false };
+  g.scale.setScalar(1.15);
+  return { group:g, torso, head, armL, armR, elbowL, elbowR, legL, legR, racket, eyeL, eyeR, mouth, browL, browR, cfg, h, b,
+    side:1, targetX:0, targetZ:0, state:'idle', swing:null, fakeUntil:0, stateUntil:0, cur:[-0.5,0.35,0,0.5,0,0], bob:0, moveT:0, scratch:false, lunge:0, tossUntil:0, leanCur:0 };
 }
 function charSetSide(ch, side){ ch.side=side; ch.group.rotation.y = side===1?0:Math.PI; ch.targetZ = side*(CONFIG.TABLE.L/2+0.6); ch.group.position.set(0,0,ch.targetZ); ch.targetX=0; }
 function charSwing(ch, tech, hand, startPhase=0){ ch.swing={tech, hand, t:startPhase*CONFIG.SWING_DUR}; ch.state='idle'; }
 function charState(ch, s, dur){ ch.state=s; ch.stateUntil=performance.now()/1000+dur; }
 function updateCharacter(ch, dt, now){
-  const g=ch.group;
+  const g=ch.group, side=ch.side||1;
   const dx=ch.targetX-g.position.x, dz=ch.targetZ-g.position.z; const dist=Math.hypot(dx,dz);
-  const step=Math.min(dist, (ch.run||2.4)*dt); if(dist>0.005){ g.position.x+=dx/dist*step; g.position.z+=dz/dist*step; ch.moveT+=dt*14; } else ch.moveT*=0.8;
-  const moving=dist>0.02;
+  const step=Math.min(dist, (ch.run||2.4)*dt); const spd=dt>0? step/dt : 0;
+  if(dist>0.005){ g.position.x+=dx/dist*step; g.position.z+=dz/dist*step; ch.moveT+=dt*(6+spd*2.6); } else ch.moveT*=0.8;
+  const moving=dist>0.03;
   if(ch.stateUntil && now>ch.stateUntil && (ch.state==='celebrate'||ch.state==='sad')) { ch.state='idle'; ch.stateUntil=0; }
-  let target=POSES.rest, k=10, bodyY=0, bend=0, lArm=[-0.2,-0.25], headX=0, legSwing=0;
-  bodyY=Math.sin(now*4)*0.01;
-  if(moving) legSwing=Math.sin(ch.moveT)*0.5;
-  if(ch.state==='ready'){ target=POSES.ready; bend=0.18; }
-  if(ch.state==='celebrate'){ bodyY=Math.abs(Math.sin(now*9))*0.22; target=[-2.9,0.4,0]; lArm=[-2.9,-0.4]; k=14; }
-  if(ch.state==='sad'){ bend=0.45; headX=0.5; if(ch.scratch){ target=[-2.5,0.25+Math.sin(now*22)*0.08,0]; headX=-0.1; } else target=[-0.1,0.2,0]; k=8; }
+  let target=POSES.rest, k=10, bodyY=Math.sin(now*2.2)*0.006, lArm=[-0.25,-0.3], lElb=0.5, headX=0.05, headY=0, sway=Math.sin(now*1.6)*0.025, splay=0.05, rTarget=[-1.2,0.3];
+  if(ch.state==='ready'){ target=POSES.ready; bodyY+=Math.abs(Math.sin(now*7))*0.014; splay=0.2; lArm=[-0.55,-0.5]; lElb=1.0; }
+  if(ch.state==='celebrate'){ bodyY=Math.abs(Math.sin(now*9))*0.22; target=[-2.9,0.4,0,0.2,0,0]; lArm=[-2.9,-0.4]; lElb=0.2; k=14; headX=-0.2; }
+  if(ch.state==='sad'){ headX=0.5; if(ch.scratch){ target=[-2.5,0.25+Math.sin(now*22)*0.08,0,1.0,0,0.3]; headX=-0.1; } else target=[-0.1,0.2,0,0.3,0,0.45]; k=8; lArm=[-0.1,-0.2]; lElb=0.3; }
   if(ch.fakeUntil>now){ target=POSES.fore.cut[0]; k=18; }
-  if(ch.swing){ const sw=ch.swing; sw.t+=dt; const p=sw.t/CONFIG.SWING_DUR; const kf=(POSES[sw.hand]||POSES.fore)[sw.tech==='side'?'cut':sw.tech]||POSES.fore.touch;
+  if(ch.tossUntil>now){ lArm=[-2.7,-0.15]; lElb=0.1; }
+  if(ball.active && ball.v.z*side>0.4 && ch.state!=='celebrate'){ const lx=(ball.p.x-g.position.x)*side; headY=-clamp(lx*0.7,-0.7,0.7); headX=0.18; }
+  if(ch.swing){ const sw=ch.swing; sw.t+=dt; const p=sw.t/CONFIG.SWING_DUR; const tk=sw.tech==='side'?'cut':sw.tech; const kf=(POSES[sw.hand]||POSES.fore)[tk]||POSES.fore.touch;
     const ease=x=>x<0?0:x>1?1:(1-Math.cos(x*Math.PI))/2;
-    const mix=(a,b,t)=>[lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t)];
+    const mix=(a,b,t)=>a.map((v,i)=>lerp(v,b[i],t));
     target = p<0.5? mix(kf[0],kf[1],ease(p/0.5)) : mix(kf[1],kf[2],ease((p-0.5)/0.5));
-    bend=0.12; k=28; if(p>=1) ch.swing=null; }
+    rTarget=RACKET_ROT[sw.tech]||rTarget; k=28; if(p>=1){ ch.swing=null; if(ch.state==='idle') ch.state='ready'; } }
+  ch.lunge=Math.max(0,(ch.lunge||0)-dt*1.6);
   const a=1-Math.exp(-dt*k);
-  ch.cur[0]=lerp(ch.cur[0],target[0],a); ch.cur[1]=lerp(ch.cur[1],target[1],a); ch.cur[2]=lerp(ch.cur[2],target[2],a);
-  ch.armR.rotation.set(ch.cur[0],0,ch.cur[1]);
-  ch.torso.rotation.set(lerp(ch.torso.rotation.x,bend,a), lerp(ch.torso.rotation.y,ch.cur[2],a), 0);
-  ch.head.rotation.x=lerp(ch.head.rotation.x,headX,a);
-  ch.armL.rotation.set(lerp(ch.armL.rotation.x,lArm[0],a),0,lerp(ch.armL.rotation.z,lArm[1],a));
-  ch.legL.rotation.x=legSwing; ch.legR.rotation.x=-legSwing;
+  for(let i=0;i<6;i++) ch.cur[i]=lerp(ch.cur[i],target[i]||0,a);
+  ch.armR.rotation.set(ch.cur[0],0,ch.cur[1]); ch.elbowR.rotation.x=ch.cur[3];
+  ch.torso.rotation.x=lerp(ch.torso.rotation.x,ch.cur[5]+0.25*ch.lunge,a); ch.torso.rotation.y=lerp(ch.torso.rotation.y,ch.cur[2],a);
+  ch.torso.position.y=0.5*ch.h-ch.cur[4]*(1+0.8*ch.lunge);
+  const vlx = dist>0.005? (dx/dist*side)*Math.min(1,spd/3) : 0; const leanT=-clamp(vlx*0.22,-0.22,0.22)+(moving?0:sway);
+  ch.leanCur=lerp(ch.leanCur||0, leanT, 1-Math.exp(-dt*8)); g.rotation.z=ch.leanCur;
+  const a2=1-Math.exp(-dt*12); ch.head.rotation.x=lerp(ch.head.rotation.x,headX,a2); ch.head.rotation.y=lerp(ch.head.rotation.y,headY,a2);
+  let lx0=lArm[0], lz0=lArm[1]; if(moving) lx0+=Math.sin(ch.moveT+Math.PI)*0.5; if(ch.swing) lz0-=ch.cur[1]*0.3;
+  ch.armL.rotation.set(lerp(ch.armL.rotation.x,lx0,a),0,lerp(ch.armL.rotation.z,lz0,a)); ch.elbowL.rotation.x=lerp(ch.elbowL.rotation.x,lElb,a);
+  const amp = moving? clamp(spd/3,0.3,1)*0.6 : 0; ch.legL.rotation.x=Math.sin(ch.moveT)*amp; ch.legR.rotation.x=-Math.sin(ch.moveT)*amp;
+  const sp2=splay+ch.cur[4]*1.2+0.25*ch.lunge; ch.legL.rotation.z=-sp2; ch.legR.rotation.z=sp2;
+  if(moving) bodyY+=Math.abs(Math.sin(ch.moveT))*0.025;
   g.position.y=bodyY;
+  const ar=1-Math.exp(-dt*14); ch.racket.rotation.x=lerp(ch.racket.rotation.x,rTarget[0],ar); ch.racket.rotation.z=lerp(ch.racket.rotation.z,rTarget[1],ar);
+  if(ch.mouth){ const happy=ch.state==='celebrate', sad=ch.state==='sad'; ch.mouth.rotation.z= sad?0:Math.PI; ch.mouth.scale.set(happy?1.7:1, happy?1.7:1, 1);
+    const blink=((now*0.9)%3.4)<0.1; const ey= happy?0.35 : blink?0.1 : (sad?0.75:1); ch.eyeL.scale.y=ch.eyeR.scale.y=ey;
+    const bz= sad?0.35 : (happy?-0.05:-0.1); ch.browL.rotation.z=bz; ch.browR.rotation.z=-bz; }
 }
 
 const VIEW = { side:1, shake:0, quality:'mid' };
@@ -699,12 +750,13 @@ function nextServe(first){
 function beginServe(server){
   R={ phase:'serve', server, lastHitter:server, needOwnBounce:true, bounces:0, incoming:null, tossAt:simTime+0.9, tossed:false, ai:null };
   ball.p.set(server*0.3, 1.0, server*(HL+0.35)); ball.v.set(0,0,0); ball.w.set(0,0,0); ball.active=true; ball.held=true; ball.floorBounces=0; ball.netDone=false; ball.netFlag=false; ball.resting=false;
-  for(const k in chars){ const c=chars[k]; c.targetX=0; c.targetZ=c.side*(HL+0.6); c.state='idle'; c.scratch=false; c.push=0; }
+  for(const k in chars){ const c=chars[k]; c.targetX=0; c.targetZ=c.side*(HL+0.6); c.state='ready'; c.scratch=false; c.push=0; }
   updateScore(); hideRhythm();
   const inDeuce=CONFIG.DEUCE && G.score[1]>=CONFIG.WIN_SCORE-1 && G.score[-1]>=CONFIG.WIN_SCORE-1; showMsg((inDeuce?'듀스 · ':'')+(server===G.mySide? '내 서브' : '상대 서브'), 1.2);
   $('#hint').textContent = server===G.mySide ? '원에서 시작해 겹칠 때 드래그! 서브: ↑드라이브 ↓커트 ←→횡 탭=짧게' : '공이 오면 원이 나타납니다';
 }
 function doToss(){
+  { const sc=chars[R.server]; if(sc) sc.tossUntil=performance.now()/1000+0.75; }
   R.tossed=true; ball.held=false; ball.v.set(0,4.2,0);
   const path=[]; simulate(ball, 2.0, false, path); let hit=null; for(const q of path){ if(q.t>0.3 && q.p.y<=1.02 && q.p.y>0.9){ hit=q; break; } }
   if(!hit) hit={t:0.85, p:ball.p.clone()};
@@ -733,6 +785,7 @@ function doHit(side, o){
   if(G.lesson && side===G.mySide && !serve) lessonOnHit(o.tech, o.grade, (R.incoming && R.incoming.side===side)? R.incoming.kind : null);
   const pos = (R.incoming && R.incoming.side===side)? R.incoming.pos.clone() : ball.p.clone();
   let strain=0, lagV=0; if(!serve){ const ch0=chars[side]; if(ch0){ lagV=Math.hypot(ch0.group.position.x-(pos.x-side*0.12), ch0.group.position.z-(pos.z+side*(0.3+(ch0.push||0)))); strain=clamp((lagV-0.25)/0.6,0,1); } }
+  { const chL=chars[side]; if(chL) chL.lunge=Math.max(chL.lunge||0, strain); }
   if(strain>0.3 && side===G.mySide) showMsg('무리한 자세!', 0.8, '#ff9a3c');
   const plan = planShot(pos, side, o.tech, o.course, o.power, o.grade, serve, serve, o.lucky?true:false, serve? null : ((R.incoming && R.incoming.side===side)? R.incoming.kind : null), strain);
   if(serve && o.grade!=='PERFECT' && Math.random()<0.01){
@@ -756,7 +809,8 @@ function applyHitState(side, pos, v, w, tech, grade, netFlag, serve, win, speed)
   if(side===G.mySide) G.stats.maxSpeed=Math.max(G.stats.maxSpeed, speed);
   if(G.mode==='ai' && R.incoming && R.incoming.side===-G.mySide) aiPlan();
   if(R.incoming && chars[R.incoming.side]){ const rc=chars[R.incoming.side]; rc.targetX = R.incoming.pos.x - rc.side*0.12; const inZ=rc.side*R.incoming.pos.z; if(!serve){ if(tech==='drive'||tech==='smash') rc.push=Math.min(1.5,(rc.push||0)+0.2+0.25*clamp((speed-8)/6,0,1)+(tech==='smash'?0.3:0)); else if(tech==='touch') rc.push=Math.max(0,(rc.push||0)-0.5); else if(tech==='cut') rc.push=Math.max(0,(rc.push||0)-0.25); }
-    const zz=R.incoming.pos.z + rc.side*(0.3+(rc.push||0)); rc.targetZ = rc.side*clamp(rc.side*zz, 0.6, HL+2.4); }
+    const zz=R.incoming.pos.z + rc.side*(0.3+(rc.push||0)); rc.targetZ = rc.side*clamp(rc.side*zz, 0.6, HL+2.4);
+    if(rc.state==='idle') rc.state='ready'; }
 }
 function doMiss(side, tech){
   if(R.phase==='end') return; const ch=chars[side]; if(ch) charSwing(ch, tech||'drive', 'fore', 0.3);
@@ -887,7 +941,7 @@ const rhythmEl=$('#rhythm'), targetEl=$('#target'), approachEl=$('#approach'); c
 function hideRhythm(){ rhythmEl.classList.add('hidden'); }
 function updateRhythm(){
   const inc=R.incoming; const me=chars[G.mySide];
-  if(!inc || inc.side!==G.mySide || inc.done || G.screen!=='playing' || simTime<inc.start-0.05){ hideRhythm(); if(me && me.state==='ready') me.state='idle'; return; }
+  if(!inc || inc.side!==G.mySide || inc.done || G.screen!=='playing' || simTime<inc.start-0.05){ hideRhythm(); return; }
   rhythmEl.classList.remove('hidden'); if(me && me.state==='idle' && !me.swing) me.state='ready';
   _proj.copy(inc.pos).project(camera); let sx=(_proj.x+1)/2*innerWidth, sy=(1-_proj.y)/2*innerHeight;
   if(_proj.z>1){ sx=innerWidth/2; sy=innerHeight-110; }
@@ -1032,7 +1086,7 @@ const bubbles={ op:{el:$('#bubbleOp'), until:0}, me:{el:$('#bubbleMe'), until:0}
 function showBubble(who, text, sec){ const b=bubbles[who]; b.el.textContent=text; b.el.classList.remove('hidden'); b.until=performance.now()/1000+sec; }
 const _bub=new THREE.Vector3();
 function updateBubbles(now){ for(const k in bubbles){ const b=bubbles[k]; if(b.el.classList.contains('hidden')) continue; if(now>b.until){ b.el.classList.add('hidden'); continue; }
-  const ch=chars[k==='me'?G.mySide:-G.mySide]; if(!ch) continue; _bub.copy(ch.group.position); _bub.y+=1.75*ch.h; _bub.project(camera);
+  const ch=chars[k==='me'?G.mySide:-G.mySide]; if(!ch) continue; _bub.copy(ch.group.position); _bub.y+=1.6*ch.h; _bub.project(camera);
   b.el.style.left=((_bub.x+1)/2*innerWidth)+'px'; b.el.style.top=((1-_bub.y)/2*innerHeight)+'px'; } }
 function notice(text, cb){ $('#noticeText').textContent=text; show('#notice'); $('#btnNoticeOk').onclick=()=>{ hide('#notice'); cb&&cb(); }; }
 function updateScore(){ $('#ptMe').textContent=G.score[G.mySide]; $('#ptOp').textContent=G.score[-G.mySide];
